@@ -1,0 +1,536 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Animated background */
+body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.8;
+    }
+}
+
+.container {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    padding: 15px;
+    padding-bottom: 150px;
+    background-image: var(--enews-bg-image);
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+}
+
+.container::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image: var(--enews-bg-image);
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    z-index: -1;
+}
+
+/* Header */
+.header {
+    text-align: center;
+    margin-bottom: 20px;
+    background: rgba(255, 255, 255, 0.1);
+    padding: 15px 20px;
+    border-radius: 15px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.header h1 {
+    color: white;
+    font-size: clamp(18px, 4vw, 28px);
+    font-weight: 700;
+    text-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+    margin-bottom: 5px;
+}
+
+.header p {
+    color: rgba(255, 255, 255, 0.9);
+    font-size: clamp(12px, 2.5vw, 16px);
+}
+
+/* Loading */
+.loading {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    color: white;
+    font-size: clamp(16px, 3vw, 24px);
+    font-weight: 600;
+    display: none;
+    z-index: 1000;
+}
+
+.loading.active {
+    display: block;
+}
+
+.loading::after {
+    content: '';
+    display: block;
+    width: 50px;
+    height: 50px;
+    margin: 20px auto;
+    border: 4px solid rgba(255, 255, 255, 0.3);
+    border-top-color: rgb(174 14 5);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Flipbook Wrapper */
+.flipbook-wrapper {
+    position: relative;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    perspective: 2500px;
+    margin: 0 auto;
+    width: 100%;
+    max-width: 100%;
+    overflow: visible;
+}
+
+#flipbook {
+    background-color: white;
+    margin: 0 auto;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4), 0 0 100px rgba(181, 175, 185, 0.3);
+    cursor: grab;
+    transition: transform 0.3s ease;
+    transform-origin: center center;
+}
+
+#flipbook.zoomed {
+    cursor: move;
+    overflow: auto;
+}
+
+#flipbook:active {
+    cursor: grabbing;
+}
+
+#flipbook:hover {
+    transform: rotateX(0deg) scale(1.02);
+}
+
+#flipbook .page {
+    background: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+}
+
+#flipbook .page canvas {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+}
+
+/* Bottom Control Bar */
+.bottom-controls {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: rgba(174, 14, 5, 0.95);
+    backdrop-filter: blur(10px);
+    border-top: 1px solid rgba(255, 255, 255, 0.2);
+    padding: 15px;
+    display: none;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+    z-index: 100;
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.3);
+}
+
+.bottom-controls.active {
+    display: flex;
+}
+
+/* Navigation Arrows - Bottom */
+.nav-arrow {
+    background: rgba(255, 255, 255, 0.2);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.nav-arrow:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.3);
+    transform: scale(1.1);
+}
+
+.nav-arrow:active:not(:disabled) {
+    transform: scale(0.95);
+}
+
+.nav-arrow:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+}
+
+.nav-arrow svg {
+    width: 28px;
+    height: 28px;
+    fill: white;
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+}
+
+/* Page Counter */
+.page-counter {
+    background: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(10px);
+    padding: 12px 25px;
+    border-radius: 25px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    font-size: 16px;
+    font-weight: 600;
+    white-space: nowrap;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+/* Controls */
+.zoom-controls {
+    display: flex;
+    gap: 5px;
+    background: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: 25px;
+    padding: 5px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+}
+
+.zoom-btn {
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    color: white;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 20px;
+    font-weight: bold;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.zoom-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: scale(1.1);
+}
+
+.zoom-btn:active {
+    transform: scale(0.95);
+}
+
+.zoom-level {
+    background: transparent;
+    color: white;
+    padding: 0 15px;
+    display: flex;
+    align-items: center;
+    font-size: 14px;
+    font-weight: 600;
+    min-width: 60px;
+    justify-content: center;
+}
+
+.control-btn {
+    background: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: white;
+    padding: 10px 20px;
+    border-radius: 25px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    white-space: nowrap;
+}
+
+.control-btn:hover {
+    background: rgba(255, 255, 255, 0.3);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+}
+
+.control-btn:active {
+    transform: translateY(0);
+}
+
+/* Tablet Styles (768px - 1024px) */
+@media (max-width: 1024px) and (min-width: 769px) {
+    .container {
+        padding: 20px;
+        padding-bottom: 130px;
+    }
+
+    .bottom-controls {
+        padding: 12px;
+        gap: 12px;
+    }
+
+    .nav-arrow {
+        width: 45px;
+        height: 45px;
+    }
+
+    .nav-arrow svg {
+        width: 26px;
+        height: 26px;
+    }
+}
+
+/* Mobile Landscape (up to 768px landscape) */
+@media (max-width: 768px) and (orientation: landscape) {
+    .container {
+        padding: 10px;
+        padding-bottom: 110px;
+    }
+
+    .bottom-controls {
+        padding: 10px;
+        gap: 10px;
+    }
+
+    .nav-arrow {
+        width: 40px;
+        height: 40px;
+    }
+
+    .nav-arrow svg {
+        width: 24px;
+        height: 24px;
+    }
+
+    .page-counter {
+        padding: 8px 15px;
+        font-size: 14px;
+    }
+
+    .control-btn {
+        padding: 8px 15px;
+        font-size: 12px;
+    }
+
+    .zoom-btn {
+        width: 35px;
+        height: 35px;
+        font-size: 18px;
+    }
+
+    .zoom-level {
+        font-size: 12px;
+        min-width: 50px;
+    }
+}
+
+/* Mobile Portrait (up to 768px) */
+@media (max-width: 768px) and (orientation: portrait) {
+    .container {
+        padding: 10px;
+        padding-bottom: 120px;
+    }
+
+    .bottom-controls {
+        padding: 10px;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .nav-arrow {
+        width: 45px;
+        height: 45px;
+    }
+
+    .nav-arrow svg {
+        width: 24px;
+        height: 24px;
+    }
+
+    .page-counter {
+        padding: 10px 20px;
+        font-size: 14px;
+    }
+
+    .control-btn {
+        padding: 8px 15px;
+        font-size: 12px;
+    }
+
+    .zoom-btn {
+        width: 35px;
+        height: 35px;
+        font-size: 18px;
+    }
+}
+
+/* Small Mobile (up to 480px) */
+@media (max-width: 480px) {
+    .container {
+        padding: 8px;
+        padding-bottom: 110px;
+    }
+
+    .bottom-controls {
+        padding: 8px;
+        gap: 6px;
+    }
+
+    .nav-arrow {
+        width: 40px;
+        height: 40px;
+    }
+
+    .nav-arrow svg {
+        width: 22px;
+        height: 22px;
+    }
+
+    .page-counter {
+        padding: 8px 15px;
+        font-size: 13px;
+    }
+
+    .control-btn {
+        padding: 6px 12px;
+        font-size: 11px;
+    }
+
+    .zoom-btn {
+        width: 32px;
+        height: 32px;
+        font-size: 16px;
+    }
+
+    .zoom-level {
+        font-size: 11px;
+        min-width: 45px;
+        padding: 0 10px;
+    }
+}
+
+/* Extra Small Mobile (up to 360px) */
+@media (max-width: 360px) {
+    .container {
+        padding: 5px;
+        padding-bottom: 105px;
+    }
+
+    .bottom-controls {
+        padding: 6px;
+        gap: 5px;
+    }
+
+    .nav-arrow {
+        width: 38px;
+        height: 38px;
+    }
+
+    .nav-arrow svg {
+        width: 20px;
+        height: 20px;
+    }
+
+    .page-counter {
+        padding: 6px 12px;
+        font-size: 12px;
+    }
+
+    .control-btn {
+        padding: 5px 10px;
+        font-size: 10px;
+    }
+
+    .zoom-btn {
+        width: 30px;
+        height: 30px;
+        font-size: 14px;
+    }
+
+    .zoom-level {
+        font-size: 10px;
+        min-width: 40px;
+    }
+}
+
+/* Touch device optimizations */
+@media (hover: none) and (pointer: coarse) {
+    .nav-arrow:active:not(:disabled) {
+        background: rgba(255, 255, 255, 0.4);
+    }
+
+    #flipbook {
+        touch-action: pan-y pinch-zoom;
+    }
+}
+
+/* High DPI Displays */
+@media (-webkit-min-device-pixel-ratio: 2), (min-resolution: 192dpi) {
+    #flipbook .page canvas {
+        image-rendering: -webkit-optimize-contrast;
+        image-rendering: crisp-edges;
+    }
+}   

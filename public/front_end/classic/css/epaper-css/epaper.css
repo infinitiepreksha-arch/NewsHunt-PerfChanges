@@ -1,0 +1,37 @@
+body {
+background-repeat: no-repeat;
+    margin: 0;
+    background-image: var(--enews-bg-image);
+    font-family: Arial, sans-serif;
+    background-size: 1980px 1200px;
+    background-position: center top;
+}
+body::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+
+    background-image: var(--enews-bg-image);
+    background-repeat: no-repeat;
+    background-size: 1980px 1200px;
+    background-position: center top;
+
+    filter: blur(10px);   /* 🔥 blur effect */
+    transform: scale(1.05); /* avoid edge clipping */
+    z-index: -1;
+}
+
+
+
+#container {
+    width: 100%;
+    height: 90vh;
+    margin: 0 auto;
+}
+
+h1 {
+    text-align: center;
+    color: #333;
+}
+
+

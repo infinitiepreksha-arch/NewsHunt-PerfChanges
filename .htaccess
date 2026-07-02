@@ -1,0 +1,5 @@
+<ifmodule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^vendor/ - [L,NC]
+    RewriteRule ^(.*)$ public/$1 [L]
+</ifmodule>

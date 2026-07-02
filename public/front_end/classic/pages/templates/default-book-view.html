@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>
+        .flip-book,
+        #fb3d-ctx {
+            overflow: visible;
+        }
+
+        .widSettings {
+            position: relative;
+        }
+
+        .widSettings .menu {
+            position: absolute;
+            bottom: 100%;
+            right: 0;
+            left: auto;
+            max-width: 90vw;
+            z-index: 9999;
+            overflow: visible;
+            white-space: nowrap;
+        }
+
+        .controls,
+        .fnavbar,
+        .ctrl {
+            overflow: visible !important;
+        }
+
+        @media (max-width: 532px), (max-height: 595px) {
+
+            /* Top navigation arrows */
+            .fnav .prev,
+            .fnav .next {
+                display: none !important;
+            }
+
+        }
+
+        @media (min-width: 533px) and (min-height: 596px) {
+
+            .fnav .prev,
+            .fnav .next,
+            .cmdFastForward {
+                display: inline-flex;
+            }
+        }
+        /* -------------------------------------------------
+   MOBILE VIEW: SMALLER ICON SIZE
+   Up to 532 × 595
+--------------------------------------------------*/
+@media (max-width: 532px), (max-height: 595px) {
+
+    /* All Font Awesome icons inside flipbook */
+    #fb3d-ctx .icon i {
+        font-size: 14px;
+        line-height: 1;
+    }
+
+    /* Optional: slightly reduce clickable area */
+    #fb3d-ctx .fnav-item a,
+    #fb3d-ctx .fnav .prev a,
+    #fb3d-ctx .fnav .next a {
+        padding: 6px;
+    }
+
+    /* Page number inputs (optional but balanced) */
+    #fb3d-ctx .pages input {
+        font-size: 12px;
+        height: 24px;
+    }
+}
+
+.ctrl .pages
+{
+  padding: 0 0px;
+    display: inline-block;
+    font-size: 0;
+}
+
+.ctrl .fnavbar .fnav
+{
+      font-size: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+}
+
+ 
+    </style>
+  </head>
+  <body>
+    <div id="fb3d-ctx" class="flip-book">
+      <div class="view">
+        <div class="fnav">
+          <div class="prev">
+            <a class="cmdBackward" href="#"><span class="icon"><i
+                  class="fa fa-angle-left"
+                  title="<$tr>Previous page</$tr>"></i></span></a>
+          </div>
+          <div class="next">
+            <a class="cmdForward" href="#"><span class="icon"><i
+                  class="fa fa-angle-right"
+                  title="<$tr>Next page</$tr>"></i></span></a>
+          </div>
+        </div>
+        <div class="widLoadingProgress loading-progress hidden">
+          <div class="progress">
+          </div>
+          <div class="txtLoadingProgress caption">
+          </div>
+        </div>
+        <div class="widLoading page-loading hidden">
+        </div>
+      </div>
+
+      <div class="controls">
+
+        <div class="ctrl js-center">
+          <nav class="fnavbar">
+            <ul class="fnav">
+
+              <li class="fnav-item cmdZoomIn"><a href="#"><span class="icon"><i
+                      class="fa fa-search-plus"
+                      title="<$tr>Zoom in</$tr>"></i></span></a></li>
+              <li class="fnav-item cmdZoomOut"><a href="#"><span class="icon"><i
+                      class="fa fa-search-minus"
+                      title="<$tr>Zoom out</$tr>"></i></span></a></li>
+              <li class="fnav-item cmdFastBackward"><a href="#"><span
+                    class="icon"><i class="fa fa-fast-backward"
+                      title="<$tr>10 pages backward</$tr>"></i></span></a></li>
+              <li class="fnav-item cmdBackward"><a href="#"><span
+                    class="icon"><i
+                      class="fa fa-backward"
+                      title="<$tr>Previous page</$tr>"></i></span></a></li>
+              <li class="fnav-item">
+                <div class="pages">
+                  <input type="text" class="number inpPage" maxlength="4"
+                    placeholder="1">
+                  <input type="text" class="amount inpPages" readOnly
+                    maxlength="4"
+                    placeholder="1">
+                </div>
+              </li>
+              <li class="fnav-item cmdForward"><a href="#"><span class="icon"><i
+                      class="fa fa-forward"
+                      title="<$tr>Next page</$tr>"></i></span></a></li>
+              <li class="fnav-item cmdFastForward"><a href="#"><span
+                    class="icon"><i
+                      class="fa fa-fast-forward"
+                      title="<$tr>10 pages forward</$tr>"></i></span></a></li>
+              <li class="fnav-item cmdFullScreen"><a href="#"><span
+                    class="icon"><i
+                      class="fa fa-arrows-alt"
+                      title="<$tr>Full screen</$tr>"></i></span></a></li>
+              <li class="dropup fnav-item toggle widSettings">
+                <a href="#">
+                  <div class="icon-caret">
+                    <span class="icon">
+                      <i class="fa fa-cog" title="<$tr>Settings</$tr>"></i>
+                      <i class="caret"></i>
+                    </span>
+                  </div>
+                </a>
+                <ul class="menu hidden">
+                  <li class="cmdSinglePage">
+                    <a href="#"><span class="icon">
+                        <i class="fa fa-file-o" title="<$tr>Single page</$tr>">
+                          Single page </i>
+                      </span>
+                    </a>
+                  </li>
+                  <li class="cmdSounds"><a href="#">
+                      <span class="icon">
+                        <i class="fa fa-volume-up" title="<$tr>Sounds</$tr>">
+                          Sounds </i>
+                      </span>
+                    </a>
+                  </li>
+                </ul>
+              </li>
+            </ul>
+          </nav>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

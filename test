@@ -1,0 +1,84 @@
+users
+    id
+    name
+    email
+    password
+    profile_picture
+    bio
+
+chats
+    id
+    name
+    description
+    is_group
+    group_image
+    is_archived
+
+chat_user  (Pivot table)
+
+    id
+    chat_id
+    user_id
+    is_admin
+    is_pinned
+
+messages
+    id
+    chat_id
+    user_id
+    type ('text', attachment, 'call', 'group_status', 'profile_picture_change', 'group_name_change')
+    content
+    attachment_type('image', 'video', 'audio', 'document')
+    is_forwarded
+    is_deleted
+    is_pinned
+
+media
+    id
+    media_type
+    media_path
+
+
+attachments
+    id
+    message_id
+    media_id
+    caption
+
+reactions
+    id
+    message_id
+    user_id
+    reaction_type ('like', 'love', 'haha', 'wow', 'sad', 'angry')
+
+message_receipts
+    id
+    message_id
+    user_id
+    status ('sent', 'delivered', 'read')
+
+calls
+    id
+    caller_id
+    receiver_id
+    call_type ('voice', 'video')
+    started_at
+    ended_at
+
+blocked_users
+    id
+    user_id
+    blocked_user_id
+
+user_settings
+    id
+    user_id
+    setting_key
+    setting_value
+
+group_settings
+    id
+    chat_id
+    setting_key
+    setting_value
+

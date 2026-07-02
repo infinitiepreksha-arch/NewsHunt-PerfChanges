@@ -1,0 +1,56 @@
+version: "1.0"
+
+profile:
+  name: laravel
+
+include:
+  - name: PhpCodeSnifferInspection
+    paths:
+      - app
+      - config
+      - database
+      - routes
+      - tests
+  - name: MessDetectorInspection
+    paths:
+      - app
+      - config
+      - database
+      - routes
+      - tests
+  - name: SecurityAdvisoriesInspection
+  - name: PhpStanInspection
+    paths:
+      - app
+      - config
+      - database
+      - routes
+      - tests
+
+exclude:
+  - name: PhpCodeSnifferInspection
+    paths:
+      - vendor
+      - storage
+      - public
+      - bootstrap/cache
+  - name: MessDetectorInspection
+    paths:
+      - vendor
+      - storage
+      - public
+      - bootstrap/cache
+  - name: PhpStanInspection
+    paths:
+      - vendor
+      - storage
+      - public
+      - bootstrap/cache
+
+php:
+  version: 8.1
+
+plugins:
+  - id: com.jetbrains.php
+
+linter: jetbrains/qodana-php:latest
