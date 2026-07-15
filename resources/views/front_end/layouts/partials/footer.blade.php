@@ -16,6 +16,12 @@
                     {{ __('frontend-labels.sponsor_ads.privacy_policy') }}
                 </a>
             </li>
+            <li>
+                <a href="{{ url('sitemap.xml') }}"
+                    class="transition-colors duration-200 hover:text-purple-600 dark:hover:text-purple-400">
+                    {{ __('frontend-labels.sponsor_ads.sitemap') }}
+                </a>
+            </li>
         </ul>
 
         <!-- Right side: Copy -->

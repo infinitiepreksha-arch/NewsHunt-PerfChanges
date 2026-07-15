@@ -1,4 +1,4 @@
-let ENABLE_PAGE_PRELOADER = !0
+let ENABLE_PAGE_PRELOADER = !1
     , DEFAULT_DARK_MODE = !1
     , USE_LOCAL_STORAGE = !0
     , USE_SYSTEM_PREFERENCES = !1
@@ -52,7 +52,7 @@ if (dark && html.classList.toggle("uc-dark", "1" === dark),
         html.append(t),
         (async () => {
             const e = Date.now();
-            await new Promise((e => document.addEventListener("DOMContentLoaded", e))),
+            await new Promise((e => window.addEventListener("load", e))),
                 html.classList.remove("show-preloader"),
                 await new Promise((e => requestAnimationFrame(e))),
                 await new Promise((t => setTimeout(t, Math.max(0, 500 - (Date.now() - e))))),
@@ -85,18 +85,25 @@ document.addEventListener("DOMContentLoaded", (function () {
 )),
     document.addEventListener("DOMContentLoaded", (function () {
         const e = document.getElementById("uc-gdpr-notification");
-        localStorage.getItem("gdprAccepted") || setTimeout((function () {
-            e.classList.add("show")
+        if (e) {
+            if (!localStorage.getItem("gdprAccepted")) {
+                setTimeout(function () {
+                    e.classList.add("show");
+                }, 5000);
+            }
+            const acceptBtn = document.getElementById("uc-accept-gdpr");
+            if (acceptBtn) {
+                acceptBtn.addEventListener("click", function () {
+                    e.classList.remove("show");
+                    localStorage.setItem("gdprAccepted", "true");
+                });
+            }
+            const closeBtn = document.getElementById("uc-close-gdpr-notification");
+            if (closeBtn) {
+                closeBtn.addEventListener("click", function () {
+                    e.classList.remove("show");
+                });
+            }
         }
-        ), 5e3),
-            document.getElementById("uc-accept-gdpr").addEventListener("click", (function () {
-                e.classList.remove("show"),
-                    localStorage.setItem("gdprAccepted", "true")
-            }
-            )),
-            document.getElementById("uc-close-gdpr-notification").addEventListener("click", (function () {
-                e.classList.remove("show")
-            }
-            ))
     }
     ));
