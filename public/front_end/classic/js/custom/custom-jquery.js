@@ -1,3 +1,24 @@
+if (typeof window.iziToast === 'undefined') {
+    window.iziToast = {
+        success: function (options) {
+            console.log('iziToast.success fallback:', options.title || options);
+        },
+        error: function (options) {
+            console.warn('iziToast.error fallback:', options.title || options);
+        }
+    };
+}
+
+(function () {
+    try {
+        var url = new URL(window.location.href);
+        if (url.searchParams.has('refresh')) {
+            url.searchParams.delete('refresh');
+            window.history.replaceState({}, document.title, url.pathname + url.search);
+        }
+    } catch (e) { }
+})();
+
 $(document).ready(function () {
     function submitLoginForm(emailError) {
         $.ajax({
@@ -368,7 +389,9 @@ document.addEventListener('DOMContentLoaded', function () {
                     modal.style.display = 'none';
                     document.body.classList.remove('uc-modal-active'); // Remove body class
                     updateModalTimestamp();
-                    window.location.reload();
+                    var refreshUrl = new URL(window.location.href);
+                    refreshUrl.searchParams.set('refresh', Date.now().toString());
+                    window.location.href = refreshUrl.toString();
                 });
         } else {
             iziToast.error({
@@ -548,7 +571,9 @@ document.addEventListener('DOMContentLoaded', function () {
                         modal.style.display = 'none';
                         document.body.classList.remove('uc-modal-active');
                         updateModalTimestamp();
-                        window.location.reload();
+                        var refreshUrl = new URL(window.location.href);
+                        refreshUrl.searchParams.set('refresh', Date.now().toString());
+                        window.location.href = refreshUrl.toString();
                     } else {
                         iziToast.error({
                             title: data.message || 'Failed to change language.',
@@ -582,4 +607,612 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 });
 // <><><><><><> END WEB LANGUAGE JS <><><><><><><><>
+// <><><><><><> START DYNAMIC AJAX NAVBAR DROPDOWNS & CAROUSELS <><><><><><><>
+$(document).ready(function () {
+    var activeDropdownXhr = null;
 
+    console.log("Initializing dynamic AJAX dropdowns & carousels...");
+
+    // HTML Builder for Navbar Category Dropdown Posts
+    function buildTopicDropdownPostHtml(post) {
+        var mediaHtml = '';
+        var postUrl = '/posts/' + post.slug;
+        var titleAttr = (post.title || '').replace(/"/g, '&quot;');
+
+        if (post.type === 'post') {
+            mediaHtml = `
+                <img class="media-cover image uc-transition-scale-up uc-transition-opaque lazy-img"
+                    src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
+                    data-src="${post.image}"
+                    alt="${titleAttr}"
+                    title="${titleAttr}"
+                    loading="lazy">`;
+        } else if (post.type === 'youtube' || post.type === 'video') {
+            mediaHtml = `
+                <img class="media-cover image uc-transition-scale-up uc-transition-opaque lazy-img"
+                    src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
+                    data-src="${post.video_thumb || post.image}"
+                    alt="${titleAttr}"
+                    title="${titleAttr}"
+                    loading="lazy">
+                <div class="post-category hstack gap-narrow justify-center align-items-center text-white">
+                    <a class="text-none" href="${postUrl}" title="${titleAttr}"><i class="bi bi-play-circle font-size-45"></i></a>
+                </div>`;
+        } else if (post.type === 'audio') {
+            mediaHtml = `
+                <img class="media-cover image uc-transition-scale-up uc-transition-opaque lazy-img"
+                    src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
+                    data-src="${post.image}"
+                    alt="${titleAttr}"
+                    title="${titleAttr}"
+                    loading="lazy">
+                <div class="post-category hstack gap-narrow justify-center align-items-center text-white">
+                    <a class="text-none" href="${postUrl}" title="${titleAttr}"><i class="bi bi-play-circle font-size-45"></i></a>
+                </div>`;
+        } else {
+            mediaHtml = `
+                <img class="media-cover image uc-transition-scale-up uc-transition-opaque lazy-img"
+                    src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
+                    data-src="${post.video_thumb || post.image}"
+                    alt="${titleAttr}"
+                    title="${titleAttr}"
+                    loading="lazy">
+                <div class="post-category hstack gap-narrow justify-center align-items-center text-white">
+                    <a class="text-none" href="${postUrl}" title="${titleAttr}"><i class="bi bi-play-circle font-size-45"></i></a>
+                </div>`;
+        }
+
+        var dateTitle = post.publish_date_news || post.publish_date || post.pubdate || '';
+        var dateText = post.publish_date || post.pubdate || '';
+
+        return `
+            <div>
+                <article class="post type-post panel uc-transition-toggle vstack gap-1">
+                    <div class="post-media panel overflow-hidden">
+                        <div class="featured-image bg-gray-25 dark:bg-gray-800 ratio ratio-16x9">
+                            <a href="${postUrl}" class="position-cover">
+                                ${mediaHtml}
+                            </a>
+                        </div>
+                    </div>
+                    <div class="post-header panel vstack gap-narrow">
+                        <h3 class="post-title h6 m-0 text-truncate-2">
+                            <a class="text-none hover:text-primary duration-150"
+                                href="${postUrl}"
+                                title="${titleAttr}">${post.title || ''}</a>
+                        </h3>
+                        <div class="post-meta panel hstack justify-start gap-1 fs-7 ft-tertiary fw-medium text-gray-900 dark:text-white text-opacity-60 d-none md:d-flex z-1 d-none md:d-block">
+                            <div>
+                                <div class="post-date hstack gap-narrow">
+                                    <span title="${dateTitle}">${dateText}</span>
+                                </div>
+                            </div>
+                            <div>
+                                <a href="${postUrl}#comment-form"
+                                    class="post-comments text-none hstack gap-narrow"
+                                    title="Comments">
+                                    <i class="icon-narrow unicon-chat"></i>
+                                    <span>${post.comment || 0}</span>
+                                    <i class="bi bi-eye fs-5 ms-1" title="Views"></i>
+                                    <span title="Views">${post.view_count || 0}</span>
+                                    <i class="bi bi-heart-fill ms-1"></i>
+                                    <span>${post.reaction || 0}</span>
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </article>
+            </div>`;
+    }
+
+    // HTML Builder for Most Read Slides
+    function buildMostReadSlideHtml(post) {
+        var mediaHtml = '';
+        var postUrl = '/posts/' + post.slug;
+        var titleAttr = (post.title || '').replace(/"/g, '&quot;');
+
+        if (post.type === 'video' || post.type === 'youtube') {
+            mediaHtml = `
+                <a href="${postUrl}" class="position-cover">
+                    <img class="media-cover image uc-transition-scale-up uc-transition-opaque lazy-img"
+                        src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
+                        data-src="${post.video_thumb || post.image}"
+                        alt="${titleAttr}"
+                        title="${titleAttr}"
+                        loading="lazy">
+                    <div class="post-category hstack gap-narrow justify-center align-items-center text-white">
+                        <a class="text-none" href="${postUrl}" title="${titleAttr}"><i class="bi bi-play-circle font-size-45"></i></a>
+                    </div>
+                </a>`;
+        } else if (post.type === 'post') {
+            mediaHtml = `
+                <a href="${postUrl}" class="position-cover">
+                    <img class="media-cover image uc-transition-scale-up uc-transition-opaque lazy-img"
+                        src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
+                        data-src="${post.image}"
+                        alt="${titleAttr}"
+                        title="${titleAttr}"
+                        loading="lazy">
+                </a>`;
+        } else if (post.type === 'audio') {
+            mediaHtml = `
+                <a href="${postUrl}" class="position-cover">
+                    <img class="media-cover image uc-transition-scale-up uc-transition-opaque lazy-img"
+                        src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
+                        data-src="${post.image}"
+                        alt="${titleAttr}"
+                        title="${titleAttr}"
+                        loading="lazy">
+                    <div class="post-category hstack gap-narrow justify-center align-items-center text-white">
+                        <a class="text-none" href="${postUrl}" title="${titleAttr}"><i class="bi bi-play-circle font-size-45"></i></a>
+                    </div>
+                </a>`;
+        }
+
+        var channelHtml = '';
+        if (post.channel) {
+            channelHtml = `
+                <div class="post-meta panel hstack justify-start gap-1 fs-7 ft-tertiary fw-medium text-gray-900 dark:text-white text-opacity-60 d-none md:d-flex z-1 d-none md:d-block">
+                    <div>
+                        <div class="post-date hstack gap-narrow">
+                            <a href="/channels/${post.channel.slug}" class="post-comments text-none hstack gap-narrow channel-button" title="${(post.channel.name || '').replace(/"/g, '&quot;')}">
+                                <span>${post.channel.name || ''}</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>`;
+        }
+
+        var dateTitle = post.publish_date_news || post.publish_date || post.pubdate || '';
+        var dateText = post.publish_date || post.pubdate || '';
+
+        return `
+            <div class="swiper-slide" data-post-id="${post.id}">
+                <div>
+                    <article class="post type-post panel uc-transition-toggle vstack gap-2">
+                        <div class="post-media panel overflow-hidden">
+                            <div class="featured-image bg-gray-25 dark:bg-gray-800 ratio ratio-3x2">
+                                ${mediaHtml}
+                            </div>
+                        </div>
+                        <div class="post-header panel vstack gap-1">
+                            <h3 class="post-title h6 m-0 text-truncate-2 hover:text-primary">
+                                <a class="text-none duration-150" href="${postUrl}" title="${titleAttr}">${post.title || ''}</a>
+                            </h3>
+                            ${channelHtml}
+                            <div class="post-meta panel hstack justify-between gap-1 fs-7 ft-tertiary fw-medium text-gray-900 dark:text-white text-opacity-60 d-none md:d-flex z-1 d-none md:d-block">
+                                <div>
+                                    <div class="post-date hstack gap-narrow">
+                                        <span title="${dateTitle}">${dateText}</span>
+                                    </div>
+                                </div>
+                                <div>
+                                    <a href="${postUrl}#comment-form" class="post-comments text-none hstack gap-narrow" title="Comments">
+                                        <i class="icon-narrow unicon-chat" title="Comments"></i>
+                                        <span title="Comments">${post.comment || 0}</span>
+                                    </a>
+                                </div>
+                                <div title="Views">
+                                    <i class="bi bi-eye fs-5"></i>
+                                    <span>${post.view_count || 0}</span>
+                                </div>
+                                <div title="Reaction">
+                                    <i class="bi bi-heart-fill"></i>
+                                    <span>${post.reaction || 0}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </article>
+                </div>
+            </div>`;
+    }
+
+    // HTML Builder for Web Story Slides
+    function buildStorySlideHtml(story) {
+        var segmentsHtml = '';
+        if (story.story_slides && story.story_slides.length > 0) {
+            story.story_slides.forEach(function () {
+                segmentsHtml += '<div class="progress-segment flex-grow-1 h-1 bg-white bg-opacity-50 story-dashed-css"></div>';
+            });
+        }
+
+        var storyUrl = '/webstories/' + (story.topic ? story.topic.slug : 'default') + '/' + story.slug;
+        var titleAttr = (story.title || '').replace(/"/g, '&quot;');
+        var firstSlideImage = story.first_slide_image || '/storage/default.jpg';
+
+        return `
+            <div class="swiper-slide px-1" data-post-id="${story.id}">
+                <div class="card bg-white dark:bg-gray-800 d-flex flex-column" id="card_style">
+                    <a href="${storyUrl}" target="_blank" class="position-relative d-block">
+                        <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
+                            data-src="${firstSlideImage}"
+                            class="card-img-top lazy-img"
+                            alt="${titleAttr}"
+                            title="${titleAttr}">
+                        <div class="story-progress-container position-absolute bottom-0 start-0 w-100 px-1 pb-2">
+                            <div class="progress-segments d-flex gap-1">
+                                ${segmentsHtml}
+                            </div>
+                        </div>
+                        <span class="visual-stories-icon position-absolute top-2 end-1 p-1 rounded-circle dark:text-white text-white bg-gray-800">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+                                <path fill="currentColor" d="M7 20V4h10v16zm-4-2V6h2v12zm16 0V6h2v12z" />
+                            </svg>
+                        </span>
+                    </a>
+                    <div id="card_title" class="card-footer text-gray-900 dark:text-white d-flex flex-column h-100">
+                        <h3 class="post-title h6 m-0 text-truncate-2 hover:text-primary">
+                            <a class="text-none duration-150" target="_blank"
+                                href="${storyUrl}"
+                                title="${titleAttr}">
+                                ${story.title || ''}
+                            </a>
+                        </h3>
+                        <div class="mt-2 text-muted fs-7">
+                            ${story.publish_date || ''}
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+    }
+
+    // HTML Builder for Top Posts Slides
+    function buildTopPostSlideHtml(post) {
+        var mediaHtml = '';
+        var postUrl = '/posts/' + post.slug;
+        var titleAttr = (post.title || '').replace(/"/g, '&quot;');
+
+        if (post.type === 'video' || post.type === 'youtube') {
+            mediaHtml = `
+                <a href="${postUrl}" class="position-cover">
+                    <img class="media-cover image uc-transition-scale-up uc-transition-opaque lazy-img"
+                        src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
+                        data-src="${post.video_thumb || post.image}"
+                        alt="${titleAttr}"
+                        loading="lazy">
+                    <div class="post-category hstack gap-narrow justify-center align-items-center text-white">
+                        <a class="text-none" href="/topics/${post.slug}" title="${titleAttr}"><i class="bi bi-play-circle font-size-45"></i></a>
+                    </div>
+                </a>`;
+        } else if (post.type === 'audio') {
+            mediaHtml = `
+                <a href="${postUrl}" class="position-cover">
+                    <img class="media-cover image uc-transition-scale-up uc-transition-opaque lazy-img"
+                        src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
+                        data-src="${post.image}"
+                        alt="${titleAttr}"
+                        loading="lazy">
+                    <div class="post-category hstack gap-narrow justify-center align-items-center text-white">
+                    </div>
+                </a>`;
+        } else if (post.type === 'post') {
+            mediaHtml = `
+                <a href="${postUrl}" class="position-cover">
+                    <img class="media-cover image uc-transition-scale-up uc-transition-opaque lazy-img"
+                        src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
+                        data-src="${post.image}"
+                        alt="${titleAttr}"
+                        loading="lazy">
+                    <div class="post-category hstack gap-narrow justify-center align-items-center text-white">
+                    </div>
+                </a>`;
+        }
+
+        var channelHtml = '';
+        if (post.channel) {
+            var logoUrl = post.channel.logo ? ('/storage/images/' + post.channel.logo) : '/assets/images/logo/default_logo.png';
+            channelHtml = `
+                <a href="/channels/${post.channel.slug}" class="post-comments text-none hstack gap-narrow">
+                    <img src="${logoUrl}" alt="channel logo" title="${(post.channel.name || '').replace(/"/g, '&quot;')}" class="rounded-pill h-20px">
+                    <span title="${(post.channel.name || '').replace(/"/g, '&quot;')}">${post.channel.name || ''}</span>
+                </a>`;
+        }
+
+        return `
+            <div class="swiper-slide" data-post-id="${post.id}">
+                <div>
+                    <article class="post type-post panel uc-transition-toggle gap-2">
+                        <div class="row child-cols g-2" data-uc-grid>
+                            <div class="col-auto">
+                                <div class="post-media panel overflow-hidden max-w-64px min-w-64px">
+                                    <div class="featured-image bg-gray-25 dark:bg-gray-800 ratio ratio-1x1">
+                                        ${mediaHtml}
+                                    </div>
+                                </div>
+                            </div>
+                            <div>
+                                <div class="post-header panel vstack gap-1">
+                                    <h3 class="post-title h6 hover:text-primary m-0 text-truncate-2">
+                                        <a class="text-none duration-150" href="${postUrl}" title="${titleAttr}">${post.title || ''}</a>
+                                    </h3>
+                                </div>
+                                ${channelHtml}
+                            </div>
+                        </div>
+                    </article>
+                </div>
+            </div>`;
+    }
+
+    // HTML Builder for Followed Channels Slides
+    function buildFollowedChannelSlideHtml(post) {
+        var mediaHtml = '';
+        var postUrl = '/posts/' + post.slug;
+        var titleAttr = (post.title || '').replace(/"/g, '&quot;');
+
+        if (post.type === 'video' || post.type === 'youtube') {
+            mediaHtml = `
+                <a href="${postUrl}" class="position-cover">
+                    <img class="media-cover image uc-transition-scale-up uc-transition-opaque lazy-img"
+                        src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
+                        data-src="${post.video_thumb || post.image}"
+                        alt="${titleAttr}"
+                        title="${titleAttr}"
+                        loading="lazy">
+                    <div class="post-category hstack gap-narrow justify-center align-items-center text-white">
+                        <a class="text-none" href="${postUrl}" title="${titleAttr}"><i class="bi bi-play-circle font-size-45"></i></a>
+                    </div>
+                </a>`;
+        } else if (post.type === 'post') {
+            mediaHtml = `
+                <a href="${postUrl}" class="position-cover">
+                    <img class="media-cover image uc-transition-scale-up uc-transition-opaque lazy-img"
+                        src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
+                        data-src="${post.image}"
+                        alt="${titleAttr}"
+                        title="${titleAttr}"
+                        loading="lazy">
+                </a>`;
+        } else if (post.type === 'audio') {
+            mediaHtml = `
+                <a href="${postUrl}" class="position-cover">
+                    <img class="media-cover image uc-transition-scale-up uc-transition-opaque lazy-img"
+                        src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
+                        data-src="${post.image}"
+                        alt="${titleAttr}"
+                        title="${titleAttr}"
+                        loading="lazy">
+                </a>
+                <div class="post-category hstack gap-narrow justify-center align-items-center text-white">
+                    <a class="text-none" href="${postUrl}" title="${titleAttr}"><i class="bi bi-play-circle font-size-45"></i></a>
+                </div>`;
+        }
+
+        var channelHtml = '';
+        if (post.channel) {
+            channelHtml = `
+                <div class="post-meta panel hstack justify-start gap-1 fs-7 ft-tertiary fw-medium text-gray-900 dark:text-white text-opacity-60 d-none md:d-flex z-1">
+                    <div>
+                        <div class="post-date hstack gap-narrow">
+                            <a href="/channels/${post.channel.slug}" class="post-comments text-none hstack gap-narrow channel-button" title="${(post.channel.name || '').replace(/"/g, '&quot;')}">
+                                <span>${post.channel.name || ''}</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>`;
+        }
+
+        var dateTitle = post.publish_date_news || post.publish_date || post.pubdate || '';
+        var dateText = post.publish_date || post.pubdate || '';
+
+        return `
+            <div class="swiper-slide" data-post-id="${post.id}">
+                <div>
+                    <article class="post type-post panel uc-transition-toggle vstack gap-2">
+                        <div class="post-media panel overflow-hidden">
+                            <div class="featured-image bg-gray-25 dark:bg-gray-800 ratio ratio-3x2">
+                                ${mediaHtml}
+                            </div>
+                        </div>
+                        <div class="post-header panel vstack gap-1">
+                            <h3 class="post-title h6 m-0 text-truncate-2 hover:text-primary">
+                                <a class="text-none duration-150" href="${postUrl}" title="${titleAttr}">${post.title || ''}</a>
+                            </h3>
+                            ${channelHtml}
+                            <div class="post-meta panel hstack justify-between gap-1 fs-7 ft-tertiary fw-medium text-gray-900 dark:text-white text-opacity-60 d-none md:d-flex z-1">
+                                <div>
+                                    <div class="post-date hstack gap-narrow">
+                                        <span title="${dateTitle}">${dateText}</span>
+                                    </div>
+                                </div>
+                                <div>
+                                    <a href="${postUrl}#comment-form" class="post-comments text-none hstack gap-narrow" title="Comments">
+                                        <i class="icon-narrow unicon-chat" title="Comments"></i>
+                                        <span title="Comments">${post.comment || 0}</span>
+                                    </a>
+                                </div>
+                                <div title="Views">
+                                    <i class="bi bi-eye fs-5"></i>
+                                    <span>${post.view_count || 0}</span>
+                                </div>
+                                <div title="Reaction">
+                                    <i class="bi bi-heart-fill ms-1"></i>
+                                    <span>${post.reaction || 0}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </article>
+                </div>
+            </div>`;
+    }
+
+    // Bind beforeshow and hide events directly on each topic dropdown using native JS (UIkit events do not bubble)
+    document.querySelectorAll('.topic-dropdown').forEach(function (dropdownEl) {
+        var dropdown = $(dropdownEl);
+        var topicId = dropdown.data('topic-id');
+        console.log("Configuring event listeners for topic dropdown ID:", topicId);
+
+        dropdownEl.addEventListener('beforeshow', function () {
+            console.log("beforeshow event triggered for topic ID:", topicId);
+            if (dropdown.hasClass('loaded') || dropdown.hasClass('loading')) {
+                console.log("Dropdown already loaded or loading for topic ID:", topicId);
+                return;
+            }
+
+            dropdown.addClass('loading');
+            console.log("Fetching AJAX posts for topic ID:", topicId);
+
+            activeDropdownXhr = $.ajax({
+                url: '/topic-posts/' + topicId,
+                type: 'GET',
+                dataType: 'json',
+                success: function (response) {
+                    console.log("Successfully fetched posts for topic ID:", topicId);
+                    if (response.success && response.posts) {
+                        var html = '';
+                        response.posts.forEach(function (post) {
+                            html += buildTopicDropdownPostHtml(post);
+                        });
+                        dropdown.find('.dropdown-loader').remove();
+                        dropdown.find('.dropdown-content-wrapper').html(html);
+                        dropdown.removeClass('loading').addClass('loaded');
+                        if (window.lazyLoadElements) {
+                            window.lazyLoadElements();
+                        }
+                    }
+                },
+                error: function (xhr, status, error) {
+                    if (status !== 'abort') {
+                        console.error("Error fetching posts for topic ID " + topicId + ":", error);
+                        dropdown.removeClass('loading');
+                    } else {
+                        console.log("AJAX request aborted for topic ID:", topicId);
+                    }
+                }
+            });
+        });
+
+        dropdownEl.addEventListener('hide', function () {
+            console.log("hide event triggered for topic ID:", topicId);
+            if (dropdown.hasClass('loading') && !dropdown.hasClass('loaded') && activeDropdownXhr) {
+                console.log("Aborting pending AJAX request for topic ID:", topicId);
+                activeDropdownXhr.abort();
+                activeDropdownXhr = null;
+                dropdown.removeClass('loading');
+            }
+        });
+    });
+
+    // Initialize Lazy Loading for Swiper sliders
+    window.initLazySliderLoad = function (options) {
+        var swiperEl = document.querySelector(options.swiperId);
+        if (!swiperEl) {
+            console.warn("Swiper container element not found:", options.swiperId);
+            return;
+        }
+
+        var swiperInstance = swiperEl.swiper;
+        var nextButton = $(options.nextButtonSelector);
+        var hasMore = true;
+        var isLoading = false;
+
+        if (!swiperInstance) {
+            console.log("Swiper instance not found for " + options.swiperId + ", retrying...");
+            // Retry in case Swiper initialization is deferred
+            setTimeout(function () {
+                window.initLazySliderLoad(options);
+            }, 100);
+            return;
+        }
+
+        console.log("Swiper instance successfully connected for", options.swiperId);
+
+        function fetchNextChunk() {
+            if (!hasMore || isLoading) {
+                return;
+            }
+
+            console.log("Fetching next chunk of slides for", options.swiperId);
+            isLoading = true;
+            $(swiperEl).addClass('loading-slides');
+            var currentSlidesCount = swiperInstance.slides.length;
+            var displayedIds = [];
+            $(swiperEl).find('.swiper-slide').each(function () {
+                var id = $(this).attr('data-post-id');
+                if (id) {
+                    displayedIds.push(id);
+                }
+            });
+
+            $.ajax({
+                url: options.ajaxUrl,
+                type: 'GET',
+                data: {
+                    offset: currentSlidesCount,
+                    displayed_ids: displayedIds
+                },
+                dataType: 'json',
+                success: function (response) {
+                    console.log("Slides batch fetched successfully for", options.swiperId, response);
+                    if (response.success && response.posts) {
+                        var slidesHtml = '';
+                        response.posts.forEach(function (post) {
+                            if (options.swiperId === '#most-read-swiper') {
+                                slidesHtml += buildMostReadSlideHtml(post);
+                            } else if (options.swiperId === '#web-stories-swiper') {
+                                slidesHtml += buildStorySlideHtml(post);
+                            } else if (options.swiperId === '#top-posts-swiper') {
+                                slidesHtml += buildTopPostSlideHtml(post);
+                            } else if (options.swiperId === '#followed-channels-swiper') {
+                                slidesHtml += buildFollowedChannelSlideHtml(post);
+                            }
+                        });
+                        swiperInstance.appendSlide(slidesHtml);
+                        swiperInstance.update();
+                        hasMore = response.has_more;
+                        if (window.lazyLoadElements) {
+                            window.lazyLoadElements();
+                        }
+                    }
+                    isLoading = false;
+                    $(swiperEl).removeClass('loading-slides');
+                    if (!hasMore) {
+                        console.log("No more slides available for", options.swiperId);
+                        nextButton.addClass('disabled');
+                    }
+                },
+                error: function (xhr, status, error) {
+                    console.error("Error fetching slides for " + options.swiperId + ":", error);
+                    isLoading = false;
+                    $(swiperEl).removeClass('loading-slides');
+                }
+            });
+        }
+
+        // Fetch when reaching near the end during swipes/drags
+        swiperInstance.on('slideChange', function () {
+            fetchNextChunk();
+        });
+
+        // Fetch when clicking next near the end of loaded slides
+        nextButton.on('click', function () {
+            fetchNextChunk();
+        });
+    };
+
+    // Instantiate for Most Read, Web Stories, Top Posts, and Followed Channels sliders
+    window.initLazySliderLoad({
+        swiperId: '#most-read-swiper',
+        nextButtonSelector: '#most-read-swiper ~ * .nav-next, #most-read-swiper ~ .nav-next',
+        ajaxUrl: '/most-read-remaining'
+    });
+
+    window.initLazySliderLoad({
+        swiperId: '#web-stories-swiper',
+        nextButtonSelector: '#web-stories-swiper .swiper-next, #web-stories-swiper ~ * .swiper-next',
+        ajaxUrl: '/web-stories-remaining'
+    });
+
+    window.initLazySliderLoad({
+        swiperId: '#top-posts-swiper',
+        nextButtonSelector: '#top-posts-swiper ~ * .nav-next, #top-posts-swiper ~ .nav-next',
+        ajaxUrl: '/top-posts-remaining'
+    });
+
+    window.initLazySliderLoad({
+        swiperId: '#followed-channels-swiper',
+        nextButtonSelector: '#followed-channels-swiper ~ * .nav-next, #followed-channels-swiper ~ .nav-next',
+        ajaxUrl: '/followed-channels-remaining'
+    });
+});
+// <><><><><><> END DYNAMIC AJAX NAVBAR DROPDOWNS & CAROUSELS <><><><><><><><>
