@@ -57,8 +57,8 @@ class ChannelController extends Controller
         $file = $request->file('logo');
         if ($file) {
             $fileName = rand('0000', '9999') . $file->getClientOriginalName();
-            $path     = $file->storeAs('images', $fileName, 'public');
-            storage_path('app/public/' . $path);
+            $path     = \App\Services\FileService::resizeAndCompressUpload($file, 'images', 400, $fileName, 'webp');
+            $fileName = basename($path);
         }
         $slug = Str::slug($request->name);
         if (empty($slug)) {
@@ -192,10 +192,13 @@ class ChannelController extends Controller
             if (file_exists($oldImagePath) && $channel->logo) {
                 unlink($oldImagePath);
             }
+            if ($channel->logo) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete('images/' . $channel->logo);
+            }
 
             $fileName = rand('0000', '9999') . $file->getClientOriginalName();
-            $path     = $file->storeAs('images', $fileName, 'public');
-            storage_path('app/public/' . $path);
+            $path     = \App\Services\FileService::resizeAndCompressUpload($file, 'images', 400, $fileName, 'webp');
+            $fileName = basename($path);
         } else {
             $fileName = $channel->logo;
         }

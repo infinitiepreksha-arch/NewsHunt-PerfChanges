@@ -16,8 +16,6 @@ use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 
-const STOREGE = 'storage/';
-
 class AudioPostAdminController extends Controller
 {
     private $post_image_path = "";
@@ -94,7 +92,7 @@ class AudioPostAdminController extends Controller
         $imageFile = $request->file('image');
         if ($imageFile) {
             $imageFileName = rand('0000', '9999') . $imageFile->getClientOriginalName();
-            $imageFilePath = $imageFile->storeAs('posts_image', $imageFileName, 'public');
+            $imageFilePath = \App\Services\FileService::resizeAndCompressUpload($imageFile, 'posts_image', 800, $imageFileName);
             $image         = url(Storage::url($imageFilePath));
         }
         // Handle audio upload if present
@@ -321,7 +319,7 @@ class AudioPostAdminController extends Controller
                     // Upload new image
                     $imageFile     = $request->file('image');
                     $imageFileName = rand(1000, 9999) . $imageFile->getClientOriginalName();
-                    $imageFilePath = $imageFile->storeAs('posts_image', $imageFileName, 'public');
+                    $imageFilePath = \App\Services\FileService::resizeAndCompressUpload($imageFile, 'posts_image', 800, $imageFileName);
                     $image         = url(Storage::url($imageFilePath));
                 }
             }

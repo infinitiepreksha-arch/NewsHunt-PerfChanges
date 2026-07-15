@@ -58,7 +58,7 @@ class LogoSettingController extends Controller
             $oldSettingFiles = Setting::whereIn('name', collect($request->files)->keys())->get();
             foreach ($request->files as $key => $file) {
                 if ($request->hasFile($key)) {
-                    $filePath = $request->file($key)->store($this->uploadFolder, 'public');
+                    $filePath = FileService::resizeAndCompressUpload($request->file($key), $this->uploadFolder, 800, null, 'webp');
                     $data[]   = [
                         'name'  => $key,
                         'value' => $filePath,

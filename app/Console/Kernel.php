@@ -20,6 +20,7 @@ class Kernel extends ConsoleKernel
         // \App\Console\Commands\SendCustomPostNotifications::class,
         \App\Console\Commands\PlanExpiry::class,
         \App\Console\Commands\FetchRssFeeds::class,
+        \App\Console\Commands\CompressExistingImages::class,
     ];
 
     protected function schedule(Schedule $schedule)

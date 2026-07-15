@@ -25,7 +25,6 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Throwable;
 
-const STOREGE = 'storage/';
 class PostController extends Controller
 {
     private $post_image_path        = "";
@@ -181,7 +180,7 @@ class PostController extends Controller
             $request->post_type == 'post' ? 'image' : '' => $request->post_type == 'post' ? 'required|max:100240|mimes:jpg,jpeg,png,webp,svg' : '',
             'has_extra_images'                           => 'required|boolean',
             'extra_images'                               => 'required_if:has_extra_images,1|array',
-            'extra_images.*'                             => 'nullable|file|max:5120|mimes:jpg,jpeg,png,gif',
+            'extra_images.*'                             => 'nullable|file|max:5120|mimes:jpg,jpeg,png,gif,webp',
         ], [
             'extra_images.required_if' => 'Please upload at least one extra image.',
         ]);
@@ -212,7 +211,7 @@ class PostController extends Controller
             $imageFile = $request->file('image');
             if ($imageFile) {
                 $imageFileName = rand('0000', '9999') . $imageFile->getClientOriginalName();
-                $imageFilePath = $imageFile->storeAs('posts_image', $imageFileName, 'public');
+                $imageFilePath = \App\Services\FileService::resizeAndCompressUpload($imageFile, 'posts_image', 800, $imageFileName);
                 $image         = url(Storage::url($imageFilePath));
             }
         }
@@ -258,7 +257,7 @@ class PostController extends Controller
                         $extraImagePath = $s3_bucket_url->value . $this->post_extra_images_path . $extraImgName;
                     } else {
                         $extraImgName   = 'extra_' . rand('0000', '9999') . '.' . $extraImage->getClientOriginalExtension();
-                        $extraImgPath   = $extraImage->storeAs('posts_extra_images', $extraImgName, 'public');
+                        $extraImgPath   = \App\Services\FileService::resizeAndCompressUpload($extraImage, 'posts_extra_images', 800, $extraImgName);
                         $extraImagePath = url(Storage::url($extraImgPath));
                     }
                     PostImage::create([
@@ -400,7 +399,7 @@ class PostController extends Controller
             ],
             'has_extra_images' => 'required|boolean',
             'extra_images'     => 'nullable|array',
-            'extra_images.*'   => 'nullable|file|max:5120|mimes:jpg,jpeg,png,gif',
+            'extra_images.*'   => 'nullable|file|max:5120|mimes:jpg,jpeg,png,gif,webp',
         ]);
 
         if ($request->has_extra_images == 1) {
@@ -468,7 +467,7 @@ class PostController extends Controller
                 } else {
                     $imageFile     = $request->file('image');
                     $imageFileName = rand(1000, 9999) . $imageFile->getClientOriginalName();
-                    $imageFilePath = $imageFile->storeAs('posts_image', $imageFileName, 'public');
+                    $imageFilePath = \App\Services\FileService::resizeAndCompressUpload($imageFile, 'posts_image', 800, $imageFileName);
                     $image         = url(Storage::url($imageFilePath));
                 }
                 $image = $s3_image ?? $image;
@@ -509,7 +508,7 @@ class PostController extends Controller
                             $extraImagePath = $s3_bucket_url->value . $this->post_extra_images_path . $extraImgName;
                         } else {
                             $extraImgName   = 'extra_' . rand(1000, 9999) . '.' . $extraImage->getClientOriginalExtension();
-                            $extraImgPath   = $extraImage->storeAs('posts_extra_images', $extraImgName, 'public');
+                            $extraImgPath   = \App\Services\FileService::resizeAndCompressUpload($extraImage, 'posts_extra_images', 800, $extraImgName);
                             $extraImagePath = url(Storage::url($extraImgPath));
                         }
                         PostImage::create([
@@ -615,7 +614,7 @@ class PostController extends Controller
         }
 
         $fileName      = rand('0000', '9999') . $image->getClientOriginalName();
-        $imageFilePath = $image->storeAs('posts_image', $fileName, 'public');
+        $imageFilePath = \App\Services\FileService::resizeAndCompressUpload($image, 'posts_image', 800, $fileName);
         return url(Storage::url($imageFilePath));
         return $post->image;
     }

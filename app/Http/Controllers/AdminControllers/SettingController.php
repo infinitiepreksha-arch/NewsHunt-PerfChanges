@@ -96,7 +96,7 @@ class SettingController extends Controller
             foreach ($request->files as $key => $file) {
                 $data[] = [
                     'name'  => $key,
-                    'value' => $request->file($key)->store($this->uploadFolder, 'public'),
+                    'value' => FileService::resizeAndCompressUpload($request->file($key), $this->uploadFolder, 800, null, 'webp'),
                     'type'  => 'file',
                 ];
                 $oldFile = $oldSettingFiles->first(function ($old) use ($key) {

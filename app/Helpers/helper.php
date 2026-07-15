@@ -11,9 +11,15 @@ use Illuminate\Support\Facades\File;
 if (! function_exists('getTheme')) {
     function getTheme()
     {
+        // changes done here by P
+        static $cachedTheme = null;
+        if ($cachedTheme !== null) {
+            return $cachedTheme;
+        }
         try {
             $themeData = Theme::select('slug')->where('is_default', '1')->first();
-            return optional($themeData)->slug ?? 'classic';
+            $cachedTheme = optional($themeData)->slug ?? 'classic';
+            return $cachedTheme;
         } catch (Throwable $e) {
             return "";
         }
@@ -371,5 +377,36 @@ if (! function_exists('getSystemHealth')) {
                 'upload_max_filesize' => ini_get('upload_max_filesize'),
             ],
         ];
+    }
+}
+
+if (! function_exists('versioned_asset')) {
+    function versioned_asset($path, $secure = null)
+    {
+        $url = app('url')->asset($path, $secure);
+
+        // Add cache-busting using file modification time
+        $fullPath = public_path($path);
+        if (file_exists($fullPath)) {
+            $timestamp = filemtime($fullPath);
+            return $url . '?v=' . $timestamp;
+        }
+
+        return $url;
+    }
+}
+
+if (! function_exists('optimize_youtube_thumb')) {
+    function optimize_youtube_thumb($url, $quality = 'mqdefault')
+    {
+        if (empty($url)) {
+            return $url;
+        }
+
+        if (str_contains($url, 'img.youtube.com') || str_contains($url, 'youtube.com/vi')) {
+            return str_replace('maxresdefault.jpg', $quality . '.jpg', $url);
+        }
+
+        return $url;
     }
 }

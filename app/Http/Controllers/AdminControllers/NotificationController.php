@@ -75,7 +75,7 @@ class NotificationController extends Controller
         }
 
         $validator = Validator::make($input, [
-            'file'    => 'nullable|image|mimes:jpeg,png,jpg',
+            'file'    => 'nullable|image|mimes:jpeg,png,jpg,webp',
             'send_to' => 'required|in:all,selected',
             'user_id' => 'required_if:send_to,selected',
             'title'   => 'required|string|max:500',

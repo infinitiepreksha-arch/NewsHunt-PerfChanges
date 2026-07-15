@@ -66,7 +66,7 @@ class NewsLanguageController extends Controller
         $imagePath = null;
         if ($request->hasFile('news_languages_image')) {
             $image     = $request->file('news_languages_image');
-            $imagePath = $image->store('news_languages', 'public');
+            $imagePath = \App\Services\FileService::resizeAndCompressUpload($image, 'news_languages', 400, null, 'webp');
         }
 
         NewsLanguage::create([
@@ -104,13 +104,13 @@ class NewsLanguageController extends Controller
 
         $imagePath = $newsLanguage->image;
         if ($request->hasFile('news_languages_image')) {
-            if ($newsLanguage->image && Storage::exists('public/' . $newsLanguage->image)) {
-                Storage::delete('public/' . $newsLanguage->image);
+            if ($newsLanguage->image && Storage::disk('public')->exists($newsLanguage->image)) {
+                Storage::disk('public')->delete($newsLanguage->image);
             }
 
             // Store the new image
             $image     = $request->file('news_languages_image');
-            $imagePath = $image->store('news_languages', 'public');
+            $imagePath = \App\Services\FileService::resizeAndCompressUpload($image, 'news_languages', 400, null, 'webp');
         }
 
         // Update the NewsLanguage record

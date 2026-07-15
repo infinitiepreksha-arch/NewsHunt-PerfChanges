@@ -58,7 +58,8 @@ class TopicController extends Controller
         $file = $request->file('logo');
         if ($file) {
             $fileName = rand('0000', '9999') . $file->getClientOriginalName();
-            $file->storeAs('images', $fileName, 'public');
+            $path     = \App\Services\FileService::resizeAndCompressUpload($file, 'images', 400, $fileName, 'webp');
+            $fileName = basename($path);
         }
 
         $slug = Str::slug($request->name);
@@ -211,9 +212,13 @@ class TopicController extends Controller
             if (file_exists($oldImagePath) && $topic->logo) {
                 unlink($oldImagePath);
             }
+            if ($topic->logo) {
+                \Illuminate\Support\Facades\Storage::disk('public')->delete('images/' . $topic->logo);
+            }
 
             $fileName = rand('0000', '9999') . $file->getClientOriginalName();
-            $file->storeAs('images', $fileName, 'public');
+            $path     = \App\Services\FileService::resizeAndCompressUpload($file, 'images', 400, $fileName, 'webp');
+            $fileName = basename($path);
         } else {
             $fileName = $topic->logo;
         }

@@ -167,7 +167,7 @@ class VideoAdminController extends Controller
             $imageFile = $request->file('image');
             if ($imageFile) {
                 $imageFileName = rand('0000', '9999') . $imageFile->getClientOriginalName();
-                $imageFilePath = $imageFile->storeAs('posts_image', $imageFileName, 'public');
+                $imageFilePath = \App\Services\FileService::resizeAndCompressUpload($imageFile, 'posts_image', 800, $imageFileName);
                 $image         = url(Storage::url($imageFilePath));
             }
 
@@ -175,7 +175,7 @@ class VideoAdminController extends Controller
             $thumbImageFile = $request->file('thumb_image');
             if ($thumbImageFile) {
                 $thumbFileName = rand('0000', '9999') . $thumbImageFile->getClientOriginalName();
-                $path          = $thumbImageFile->storeAs('thumb_image', $thumbFileName, 'public');
+                $path          = \App\Services\FileService::resizeAndCompressUpload($thumbImageFile, 'thumb_image', 800, $thumbFileName);
                 $thumbImage    = url(Storage::url($path));
             }
 
@@ -557,7 +557,7 @@ class VideoAdminController extends Controller
                     // Upload new image
                     $imageFile     = $request->file('image');
                     $imageFileName = rand(1000, 9999) . $imageFile->getClientOriginalName();
-                    $imageFilePath = $imageFile->storeAs('posts_image', $imageFileName, 'public');
+                    $imageFilePath = \App\Services\FileService::resizeAndCompressUpload($imageFile, 'posts_image', 800, $imageFileName);
                     $image         = url(Storage::url($imageFilePath));
                 }
             }
@@ -696,7 +696,7 @@ class VideoAdminController extends Controller
 
             if ($image) {
                 $fileName      = rand('0000', '9999') . $image->getClientOriginalName();
-                $imageFilePath = $image->storeAs('posts_image', $fileName, 'public');
+                $imageFilePath = \App\Services\FileService::resizeAndCompressUpload($image, 'posts_image', 800, $fileName);
                 $imageUrl      = url(Storage::url($imageFilePath));
             }
         }
@@ -727,7 +727,7 @@ class VideoAdminController extends Controller
 
             if ($thumbImage) {
                 $fileName      = rand('0000', '9999') . $thumbImage->getClientOriginalName();
-                $imageFilePath = $thumbImage->storeAs('thumb_image', $fileName, 'public');
+                $imageFilePath = \App\Services\FileService::resizeAndCompressUpload($thumbImage, 'thumb_image', 800, $fileName);
                 $imageUrl      = url(Storage::url($imageFilePath));
             }
         }

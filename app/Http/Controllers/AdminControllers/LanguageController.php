@@ -75,7 +75,7 @@ class LanguageController extends Controller
             'name_in_english' => 'required|regex:/^[\pL\s]+$/u',
             'code'            => 'required|unique:languages,code',
             'rtl'             => 'nullable',
-            'image'           => 'required|mimes:jpeg,png,jpg,svg|max:2048',
+            'image'           => 'required|mimes:jpeg,png,jpg,svg,webp|max:2048',
         ]);
 
         if ($validator->fails()) {

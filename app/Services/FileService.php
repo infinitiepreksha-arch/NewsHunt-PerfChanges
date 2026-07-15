@@ -13,12 +13,17 @@ class FileService
      * @return string
      */
     const RESOURCE_LANG = 'resources/lang/';
-    public static function compressAndUpload($requestFile, $folder)
+    public static function compressAndUpload($requestFile, $folder, $format = 'webp')
     {
-        $file_name = uniqid('', true) . time() . '.' . $requestFile->getClientOriginalExtension();
-        if (in_array($requestFile->getClientOriginalExtension(), ['jpg', 'jpeg', 'png'])) {
-            // Check the Extension should be jpg or png and do compression
-            $image = Image::make($requestFile)->encode(null, 60);
+        $extension = strtolower($requestFile->getClientOriginalExtension());
+        $isImage = in_array($extension, ['jpg', 'jpeg', 'png', 'webp']);
+        
+        $outExtension = ($isImage && $format === 'webp') ? 'webp' : $extension;
+        $file_name = uniqid('', true) . time() . '.' . $outExtension;
+
+        if ($isImage) {
+            // Check the Extension should be jpg, jpeg, png, or webp and do compression & conversion
+            $image = Image::make($requestFile)->encode($format, 60);
             Storage::disk('public')->put($folder . '/' . $file_name, $image);
         } else {
             // Else assign file as it is
@@ -64,6 +69,43 @@ class FileService
             self::delete($deleteRawOriginalImage);
         }
         return self::compressAndUpload($requestFile, $folder);
+    }
+
+    public static function resizeAndCompressUpload($requestFile, $folder, $maxWidth = 800, $fileName = null, $format = 'webp')
+    {
+        $extension = strtolower($requestFile->getClientOriginalExtension());
+        $isImage = in_array($extension, ['jpg', 'jpeg', 'png', 'webp']);
+
+        if (empty($fileName)) {
+            $outExtension = ($isImage && $format === 'webp') ? 'webp' : $extension;
+            $fileName = uniqid('', true) . time() . '.' . $outExtension;
+        } else {
+            // If custom fileName has original extension, replace it with .webp if needed
+            if ($isImage && $format === 'webp') {
+                $pathInfo = pathinfo($fileName);
+                $fileName = $pathInfo['filename'] . '.webp';
+            }
+        }
+
+        if ($isImage) {
+            $img = \Intervention\Image\Facades\Image::make($requestFile->path());
+
+            // Resize if wider than maxWidth
+            if ($img->width() > $maxWidth) {
+                $img->resize($maxWidth, null, function ($constraint) {
+                    $constraint->aspectRatio();
+                    $constraint->upSize();
+                });
+            }
+
+            // Quality compression and WebP conversion (60%)
+            $compressedData = $img->encode($format, 60);
+            \Illuminate\Support\Facades\Storage::disk('public')->put($folder . '/' . $fileName, $compressedData);
+        } else {
+            $requestFile->storeAs($folder, $fileName, 'public');
+        }
+
+        return $folder . '/' . $fileName;
     }
 
     /**
