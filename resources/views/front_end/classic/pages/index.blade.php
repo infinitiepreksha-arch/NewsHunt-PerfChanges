@@ -1,20 +1,28 @@
 @extends('front_end.' . $theme . '.layout.main')
 @section('body')
 
+    <style>
+        .swiper-nav.disabled, .swiper-button-disabled, .nav-next.disabled, .nav-prev.disabled {
+            pointer-events: auto !important;
+            cursor: pointer !important;
+            opacity: 1 !important;
+        }
+    </style>
     <div id="wrapper" class="wrap overflow-hidden-x">
         <!-- Top Posts Section start -->
+        @if (isset($top_posts) && $top_posts->isNotEmpty())
         <div class="section panel overflow-hidden swiper-parent border-top">
             <div class="section-outer panel py-2 lg:py-4 dark:text-white">
                 <div class="container max-w-xl">
                     <div class="section-inner panel vstack gap-2">
                         <div class="block-layout carousel-layout vstack gap-2 lg:gap-3 panel">
                             <div class="block-content panel">
-                                <div class="swiper"
-                                    data-uc-swiper="items: 1; gap: 16; dots: .dot-nav; next: .nav-next; prev: .nav-prev; disable-class: d-none;"
+                                <div class="swiper" id="top-posts-swiper"
+                                    data-uc-swiper="items: 1; gap: 16; dots: .dot-nav; next: .nav-next; prev: .nav-prev; disable-class: disabled;"
                                     data-uc-swiper-s="items: 3; gap: 24;" data-uc-swiper-l="items: 4; gap: 24;">
                                     <div class="swiper-wrapper">
                                         @foreach ($top_posts as $top_post)
-                                            <div class="swiper-slide">
+                                            <div class="swiper-slide" data-post-id="{{ $top_post->id }}">
                                                 <div>
                                                     <article class="post type-post panel uc-transition-toggle gap-2">
                                                         <div class="row child-cols g-2" data-uc-grid>
@@ -30,7 +38,7 @@
                                                                                     src="{{ $top_post->video_thumb ?? $defaultImage }}"
                                                                                     data-src="{{ $top_post->video_thumb ?? $defaultImage }}"
                                                                                     alt="Hidden Gems: Underrated Travel Destinations Around the World"
-                                                                                    loading="lazy" fetchpriority="high">
+                                                                                    loading="lazy">
                                                                                 <div
                                                                                     class="post-category hstack gap-narrow justify-center align-items-center text-white">
                                                                                     <a class="text-none"
@@ -46,7 +54,7 @@
                                                                                     src="{{ $top_post->image ?? $defaultImage }}"
                                                                                     data-src="{{ $top_post->image ?? $defaultImage }}"
                                                                                     alt="Hidden Gems: Underrated Travel Destinations Around the World"
-                                                                                    loading="lazy" fetchpriority="high">
+                                                                                    loading="lazy">
                                                                                 <div
                                                                                     class="post-category hstack gap-narrow justify-center align-items-center text-white">
                                                                                 </div>
@@ -58,7 +66,7 @@
                                                                                     src="{{ $top_post->image ?? $defaultImage }}"
                                                                                     data-src="{{ $top_post->image ?? $defaultImage }}"
                                                                                     alt="Hidden Gems: Underrated Travel Destinations Around the World"
-                                                                                    loading="lazy" fetchpriority="high">
+                                                                                    loading="lazy">
                                                                                 <div
                                                                                     class="post-category hstack gap-narrow justify-center align-items-center text-white">
                                                                                 </div>
@@ -109,9 +117,11 @@
                 </div>
             </div>
         </div>
+        @endif
         <!-- Top Posts Section end -->
 
         <!-- Banner Section start -->
+        @if (isset($postBanners) && $postBanners->isNotEmpty())
         <div class="section panel mb-4 lg:mb-6">
             <div class="section-outer panel">
                 <div class="container max-w-xl">
@@ -140,22 +150,22 @@
                                                                             <canvas class="h-100 w-100"></canvas>
                                                                             <a href="{{ url('posts/' . $banner->slug) }}"
                                                                                 class="position-cover">
-                                                                                <img class="media-cover image uc-transition-scale-up uc-transition-opaque"
-                                                                                    src="{{ $banner->image ?? $defaultImage }}"
-                                                                                    data-src="{{ $banner->image ?? $defaultImage }}"
-                                                                                    alt="No img" fetchpriority="high"
-                                                                                    decoding="async">
+                                                                                <img class="media-cover image uc-transition-scale-up uc-transition-opaque {{ !$loop->first ? 'lazy-img' : '' }}"
+                                                                                     src="{{ $loop->first ? ($banner->image ?? $defaultImage) : 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7' }}"
+                                                                                     data-src="{{ $banner->image ?? $defaultImage }}"
+                                                                                     alt="No img" @if($loop->first) fetchpriority="high" @endif
+                                                                                     decoding="async">
                                                                             </a>
                                                                         </div>
                                                                         <div
                                                                             class="featured-image bg-gray-25 dark:bg-gray-800 ratio ratio-16x9 d-block md:d-none">
                                                                             <a href="{{ url('posts/' . $banner->slug) }}"
                                                                                 class="position-cover">
-                                                                                <img class="media-cover image uc-transition-scale-up uc-transition-opaque"
-                                                                                    src="{{ $banner->image ?? $defaultImage }}"
-                                                                                    data-src="{{ $banner->image ?? $defaultImage }}"
-                                                                                    alt="Solo Travel: Some Tips and Destinations for the Adventurous Explorer"
-                                                                                    fetchpriority="high" decoding="async">
+                                                                                <img class="media-cover image uc-transition-scale-up uc-transition-opaque {{ !$loop->first ? 'lazy-img' : '' }}"
+                                                                                     src="{{ $loop->first ? ($banner->image ?? $defaultImage) : 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7' }}"
+                                                                                     data-src="{{ $banner->image ?? $defaultImage }}"
+                                                                                     alt="Solo Travel: Some Tips and Destinations for the Adventurous Explorer"
+                                                                                     @if($loop->first) fetchpriority="high" @endif decoding="async">
                                                                             </a>
                                                                         </div>
                                                                     </div>
@@ -196,7 +206,6 @@
                                                                                                             <img src="{{ url('storage/images/' . $banner->channel->logo ?? '') }}"
                                                                                                                 alt="chanel logo"
                                                                                                                 class="rounded h-20px"
-                                                                                                                fetchpriority="high"
                                                                                                                 decoding="async">
                                                                                                             {{ $banner->channel->name ?? '' }}
                                                                                                         </a>
@@ -245,7 +254,7 @@
                                                                                     class="media-cover image uc-transition-scale-up uc-transition-opaque"
                                                                                     src="" alt="Ad will load soon"
                                                                                     data-url="{{ url('/ads/random') }}"
-                                                                                    loading="lazy" fetchpriority="high">
+                                                                                    loading="lazy">
                                                                             </a>
                                                                         </div>
 
@@ -260,7 +269,7 @@
                                                                                     class="media-cover image uc-transition-scale-up uc-transition-opaque"
                                                                                     src="" alt="Ad will load soon"
                                                                                     data-url="{{ url('/ads/random') }}"
-                                                                                    loading="lazy" fetchpriority="high">
+                                                                                    loading="lazy">
                                                                             </a>
                                                                         </div>
                                                                     </div>
@@ -371,6 +380,7 @@
                                         </div>
                                     </div>
                                 @else
+                                    @if (isset($sidebarPosts) && $sidebarPosts->isNotEmpty())
                                     <div class="lg:col-3 order-1">
                                         <div class="block-layout list-layout vstack gap-2 lg:gap-3 panel overflow-hidden">
                                             <div class="block-header panel pt-1 border-top">
@@ -381,7 +391,7 @@
                                             </div>
                                             <div class="block-content">
                                                 <div class="row child-cols-12 g-2 lg:g-4">
-                                                    @foreach ($top_posts->take(4) as $post)
+                                                    @foreach ($sidebarPosts as $post)
                                                         <article class="post type-post panel uc-transition-toggle mb-0">
                                                             <div class="row child-cols g-2" data-uc-grid>
                                                                 <div>
@@ -412,8 +422,8 @@
                                                                             <a href="{{ url('posts/' . $post->slug) }}"
                                                                                 class="position-cover">
                                                                                 @if ($post->type == 'video' || $post->type == 'youtube')
-                                                                                    <img class="media-cover image uc-transition-scale-up uc-transition-opaque"
-                                                                                        src="{{ $post->video_thumb ?? $defaultImage }}"
+                                                                                    <img class="media-cover image uc-transition-scale-up uc-transition-opaque lazy-img"
+                                                                                        data-src="{{ $post->video_thumb ?? $defaultImage }}" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
                                                                                         alt="{{ $post->title }}"
                                                                                         loading="lazy">
                                                                                     <div
@@ -424,8 +434,8 @@
                                                                                                 class="bi bi-play-circle font-size-45"></i></a>
                                                                                     </div>
                                                                                 @elseif ($post->type == 'audio')
-                                                                                    <img class="media-cover image uc-transition-scale-up uc-transition-opaque"
-                                                                                        src="{{ $post->image ?? $defaultImage }}"
+                                                                                    <img class="media-cover image uc-transition-scale-up uc-transition-opaque lazy-img"
+                                                                                        data-src="{{ $post->image ?? $defaultImage }}" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
                                                                                         alt="{{ $post->title }}"
                                                                                         loading="lazy">
                                                                                     <div
@@ -436,8 +446,8 @@
                                                                                                 class="bi bi-play-circle font-size-45"></i></a>
                                                                                     </div>
                                                                                 @elseif ($post->type == 'post')
-                                                                                    <img class="media-cover image uc-transition-scale-up uc-transition-opaque"
-                                                                                        src="{{ $post->image ?? $defaultImage }}"
+                                                                                    <img class="media-cover image uc-transition-scale-up uc-transition-opaque lazy-img"
+                                                                                        data-src="{{ $post->image ?? $defaultImage }}" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
                                                                                         alt="{{ $post->title }}"
                                                                                         loading="lazy">
                                                                                 @endif
@@ -454,6 +464,7 @@
                         </div>
                     </div>
                 </div>
+                                    @endif
                 @endif
             </div>
         </div>
@@ -461,6 +472,7 @@
     </div>
     </div>
     </div>
+    @endif
     <!-- Banner Section end -->
 
     <div id="header-ad-container" class="text-center my-3"></div>
@@ -522,19 +534,19 @@
                                                                     <a href="{{ url('posts/' . $post->slug) }}"
                                                                         class="position-cover">
                                                                         @if ($post->type == 'video' || $post->type == 'youtube' || $post->type == 'audio')
-                                                                            <img class="media-cover image uc-transition-scale-up uc-transition-opaque"
-                                                                                src="{{ $post->image ?? $defaultImage }}"
+                                                                            <img class="media-cover image uc-transition-scale-up uc-transition-opaque lazy-img"
+                                                                                src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
                                                                                 data-src="{{ $post->image ?? $defaultImage }}"
                                                                                 alt="{{ $post->title ?? '' }}"
                                                                                 title="{{ $post->title ?? '' }}"
-                                                                                loading="lazy" fetchpriority="high">
+                                                                                loading="lazy">
                                                                         @elseif($post->type == 'post')
-                                                                            <img class="media-cover image uc-transition-scale-up uc-transition-opaque"
-                                                                                src="{{ $post->image ?? $defaultImage }}"
+                                                                            <img class="media-cover image uc-transition-scale-up uc-transition-opaque lazy-img"
+                                                                                src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
                                                                                 data-src="{{ $post->image ?? $defaultImage }}"
                                                                                 alt="{{ $post->title ?? '' }}"
                                                                                 title="{{ $post->title ?? '' }}"
-                                                                                loading="lazy" fetchpriority="high">
+                                                                                loading="lazy">
                                                                         @endif
                                                                     </a>
                                                                 </div>
@@ -585,11 +597,11 @@
                                 @if (isset($getEnewsSettings))
                                     <article class="post type-post">
                                         <div class="featured-image epaper_css ratio ratio-1x1 sm:ratio-16x9">
-                                            <img class="media-cover image epaper_css opacity-15"
-                                                src="{{ $getEnewsSettings['paperimage'] }}"
-                                                data-src="{{ url('storage/' . $getEnewsSettings['paperimage']) }}"
+                                            <img class="media-cover image epaper_css opacity-15 lazy-img"
+                                                src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
+                                                data-src="{{ $getEnewsSettings['paperimage'] }}"
                                                 alt="The Art of Baking: From Classic Bread to Artisan Pastries"
-                                                loading="lazy" fetchpriority="high">
+                                                loading="lazy">
 
                                         </div>
                                         <div
@@ -622,10 +634,10 @@
                                                 <div class="post-media panel overflow-hidden">
                                                     <figure
                                                         class="featured-image m-0 ratio ratio-16x9 bg-gray-50 uc-transition-toggle overflow-hidden bg-gray-25 dark:bg-gray-800">
-                                                        <img class="media-cover image uc-transition-scale-up uc-transition-opaque"
-                                                            src="{{ asset('storage/' . $enewspaper->thumbnail) }}"
+                                                        <img class="media-cover image uc-transition-scale-up uc-transition-opaque lazy-img"
+                                                            src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
                                                             data-src="{{ asset('storage/' . $enewspaper->thumbnail) }}"
-                                                            alt="image" loading="lazy" fetchpriority="high">
+                                                            alt="image" loading="lazy">
                                                         @if ($dailyLimitReached)
                                                             <!-- Daily limit reached: redirect to e-newspaper page -->
                                                             <a href="{{ url('e-newspaper') }}" target="_self"
@@ -646,8 +658,8 @@
                                                                     <div class="d-flex gap-1">
                                                                         <a href="{{ url('channels/' . $enewspaper->channel->slug) }}"
                                                                             title="{{ $enewspaper->channel->name }}"><img
-                                                                                src="{{ url('storage/images/' . $enewspaper->channel->logo) }}"
-                                                                                alt="Channel Logo" class="h-20px"></a>
+                                                                                data-src="{{ url('storage/images/' . $enewspaper->channel->logo) }}" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
+                                                                                alt="Channel Logo" class="h-20px lazy-img"></a>
                                                                         <a href="{{ url('channels/' . $enewspaper->channel->slug) }}"
                                                                             class="text-black h6 dark:text-white text-none fw-bold"
                                                                             title="{{ $enewspaper->channel->name }}">{{ $enewspaper->channel->name }}</a>
@@ -708,10 +720,10 @@
                                             <div class="panel">
                                                 <figure
                                                     class="featured-image-magazine m-0 ratio ratio-3x4 overflow-hidden uc-transition-toggle bg-gray-25 dark:bg-gray-800">
-                                                    <img class="media-cover image uc-transition-scale-up uc-transition-opaque"
-                                                        src="{{ asset('storage/' . $magazine->thumbnail) }}"
+                                                    <img class="media-cover image uc-transition-scale-up uc-transition-opaque lazy-img"
+                                                        src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
                                                         data-src="{{ asset('storage/' . $magazine->thumbnail) }}"
-                                                        alt="image" loading="lazy" fetchpriority="high">
+                                                        alt="image" loading="lazy">
                                                     @if ($dailyLimitReached)
                                                         <a href="{{ url('e-magazine') }}" target="_self"
                                                             class="position-cover" data-caption="image"></a>
@@ -731,8 +743,8 @@
                                                             <div class="d-flex gap-1">
                                                                 <a href="{{ url('channels/' . $magazine->channel->slug) }}"
                                                                     title="{{ $magazine->channel->name }}"><img
-                                                                        src="{{ url('storage/images/' . $magazine->channel->logo) }}"
-                                                                        alt="Channel Logo" class="h-20px"></a>
+                                                                        data-src="{{ url('storage/images/' . $magazine->channel->logo) }}" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
+                                                                        alt="Channel Logo" class="h-20px lazy-img"></a>
                                                                 <a href="{{ url('channels/' . $magazine->channel->slug) }}"
                                                                     class="post-comments text-none hstack gap-narrow channel-button"
                                                                     title="ABP Live">
@@ -777,13 +789,13 @@
                                 {{ __('frontend-labels.home.most_read') }}</h2>
                         </div>
                         <div class="block-content panel">
-                            <div class="swiper"
-                                data-uc-swiper="items: 2; gap: 16; dots: .dot-nav; next: .nav-next; prev: .nav-prev; disable-class: d-none;"
+                            <div class="swiper" id="most-read-swiper"
+                                data-uc-swiper="items: 2; gap: 16; dots: .dot-nav; next: .nav-next; prev: .nav-prev; disable-class: disabled;"
                                 data-uc-swiper-s="items: 3; gap: 24;" data-uc-swiper-l="items: 5; gap: 24;">
                                 <div class="swiper-wrapper">
                                     @if (!empty($mostReads))
                                         @foreach ($mostReads as $mostRead)
-                                            <div class="swiper-slide">
+                                            <div class="swiper-slide" data-post-id="{{ $mostRead->id }}">
                                                 <div>
                                                     <article
                                                         class="post type-post panel uc-transition-toggle vstack gap-2">
@@ -793,12 +805,12 @@
                                                                 @if ($mostRead->type == 'video' || $mostRead->type == 'youtube')
                                                                     <a href="{{ url('posts/' . $mostRead->slug) }}"
                                                                         class="position-cover">
-                                                                        <img class="media-cover image uc-transition-scale-up uc-transition-opaque"
-                                                                            src="{{ $mostRead->video_thumb ?? $defaultImage }}"
+                                                                        <img class="media-cover image uc-transition-scale-up uc-transition-opaque lazy-img"
+                                                                            src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
                                                                             data-src="{{ $mostRead->video_thumb ?? $defaultImage }}"
                                                                             alt="{{ $mostRead->title ?? '' }}"
                                                                             title="{{ $mostRead->title ?? '' }}"
-                                                                            loading="lazy" fetchpriority="high">
+                                                                            loading="lazy">
                                                                         <div
                                                                             class="post-category hstack gap-narrow justify-center align-items-center text-white">
                                                                             <a class="text-none"
@@ -810,22 +822,22 @@
                                                                 @elseif($mostRead->type == 'post')
                                                                     <a href="{{ url('posts/' . $mostRead->slug) }}"
                                                                         class="position-cover">
-                                                                        <img class="media-cover image uc-transition-scale-up uc-transition-opaque"
-                                                                            src="{{ $mostRead->image ?? $defaultImage }}"
+                                                                        <img class="media-cover image uc-transition-scale-up uc-transition-opaque lazy-img"
+                                                                            src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
                                                                             data-src="{{ $mostRead->image ?? $defaultImage }}"
                                                                             alt="{{ $mostRead->title ?? '' }}"
                                                                             title="{{ $mostRead->title ?? '' }}"
-                                                                            loading="lazy" fetchpriority="high">
+                                                                            loading="lazy">
                                                                     </a>
                                                                 @elseif($mostRead->type == 'audio')
                                                                     <a href="{{ url('posts/' . $mostRead->slug) }}"
                                                                         class="position-cover">
-                                                                        <img class="media-cover image uc-transition-scale-up uc-transition-opaque"
-                                                                            src="{{ $mostRead->image ?? $defaultImage }}"
+                                                                        <img class="media-cover image uc-transition-scale-up uc-transition-opaque lazy-img"
+                                                                            src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
                                                                             data-src="{{ $mostRead->image ?? $defaultImage }}"
                                                                             alt="{{ $mostRead->title ?? '' }}"
                                                                             title="{{ $mostRead->title ?? '' }}"
-                                                                            loading="lazy" fetchpriority="high">
+                                                                            loading="lazy">
                                                                         <div
                                                                             class="post-category hstack gap-narrow justify-center align-items-center text-white">
                                                                             <a class="text-none"
@@ -939,8 +951,8 @@
                                                 data-id="{{ $audioPost->id }}">
                                                 <div class="d-flex align-items-center p-3">
                                                     <div class="position-relative flex-shrink-0 me-3">
-                                                        <img src="{{ $audioPost->image ?? asset('assets/images/no_image_available.png') }}"
-                                                            class="rounded shadow audio-thumbnail"
+                                                        <img data-src="{{ $audioPost->image ?? asset('assets/images/no_image_available.png') }}" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
+                                                            class="rounded shadow audio-thumbnail lazy-img"
                                                             alt="{{ $audioPost->title ?? 'Audio Post' }}"
                                                             onerror="this.onerror=null; this.src='{{ asset('assets/images/no_image_available.png') }}';">
 
@@ -1024,25 +1036,27 @@
                             </h2>
                         </div>
                         <div class="block-content panel">
-                            <div class="swiper swiper-main swiper-active-visibility h-100 swiper-initialized swiper-horizontal swiper-watch-progress"
+                            <div class="swiper swiper-main swiper-active-visibility h-100 swiper-initialized swiper-horizontal swiper-watch-progress" id="web-stories-swiper"
                                 data-uc-swiper="items: 1.25; active: 2; gap: 2; center: true; center-bounds: true; disable-class: d-none;"
                                 data-uc-swiper-s="items: 4;" data-uc-swiper-l="items: 5;">
                                 <div class="swiper-wrapper">
                                     @if (!empty($stories))
                                         @foreach ($stories as $story)
-                                            <div class="swiper-slide px-1">
+                                            <div class="swiper-slide px-1" data-post-id="{{ $story->id }}">
                                                 <div class="card bg-white dark:bg-gray-800 d-flex flex-column"
                                                     id="card_style">
 
                                                     <a href="{{ url('webstories/' . $story->topic->slug . '/' . $story->slug) }}"
                                                         target="_blank" class="position-relative d-block">
                                                         @if ($story && $story->story_slides->isNotEmpty() && $story->story_slides->first()->image)
-                                                            <img src="{{ asset('storage/' . $story->story_slides->first()->image) }}"
-                                                                target="_blank" class="card-img-top"
+                                                            <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
+                                                                data-src="{{ asset('storage/' . $story->story_slides->first()->image) }}"
+                                                                target="_blank" class="card-img-top lazy-img"
                                                                 alt="{{ $story->title }}">
                                                         @else
-                                                            <img src="{{ asset('storage/default.jpg') }}"
-                                                                class="card-img-top" alt="Default Image">
+                                                            <img src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
+                                                                data-src="{{ asset('storage/default.jpg') }}"
+                                                                class="card-img-top lazy-img" alt="Default Image">
                                                         @endif
                                                         <div
                                                             class="story-progress-container position-absolute bottom-0 start-0 w-100 px-1 pb-2">
@@ -1158,12 +1172,12 @@
                                                                         class="featured-image bg-gray-25 dark:bg-gray-800 ratio ratio-1x1">
                                                                         <a href="{{ url('posts/' . $post->slug) }}"
                                                                             class="position-cover">
-                                                                            <img class="media-cover image uc-transition-scale-up uc-transition-opaque"
-                                                                                src="{{ $post->image ?? $defaultImage }}"
+                                                                            <img class="media-cover image uc-transition-scale-up uc-transition-opaque lazy-img"
+                                                                                src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
                                                                                 data-src="{{ $post->image ?? $defaultImage }}"
                                                                                 alt="{{ $post->title ?? '' }}"
                                                                                 title="{{ $post->title ?? '' }}"
-                                                                                loading="lazy" fetchpriority="high">
+                                                                                loading="lazy">
                                                                         </a>
                                                                     </div>
                                                                 </div>
@@ -1219,9 +1233,9 @@
                                                             <div class="post-media panel overflow-hidden">
                                                                 <div
                                                                     class="featured-image bg-gray-25 dark:bg-gray-800 ratio ratio-4x3">
-                                                                    <img class="media-cover image uc-transition-scale-up uc-transition-opaque"
+                                                                    <img class="media-cover image uc-transition-scale-up uc-transition-opaque lazy-img"
                                                                         title="{{ $post->title }}"
-                                                                        src="{{ $post->image ?? $defaultImage }}"
+                                                                        src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
                                                                         data-src="{{ $post->image ?? $defaultImage }}"
                                                                         alt="{{ $post->title }}">
                                                                 </div>
@@ -1319,11 +1333,11 @@
                                                                             class="featured-image bg-gray-25 dark:bg-gray-800 ratio ratio-1x1">
                                                                             <a href="{{ url('posts/' . $post->slug) }}"
                                                                                 class="position-cover">
-                                                                                <img class="media-cover image uc-transition-scale-up uc-transition-opaque"
-                                                                                    src="{{ $post->image ?? $defaultImage }}"
+                                                                                <img class="media-cover image uc-transition-scale-up uc-transition-opaque lazy-img"
+                                                                                    src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
                                                                                     data-src="{{ $post->image ?? $defaultImage }}"
                                                                                     alt="Tech Innovations Reshaping the Retail Landscape: AI Payments"
-                                                                                    loading="lazy" fetchpriority="high"
+                                                                                    loading="lazy"
                                                                                     title="{{ $post->title }}">
                                                                             </a>
                                                                         </div>
@@ -1347,7 +1361,7 @@
     <!-- Topic Section end -->
 
     <!-- User Followed Channels News -->
-    @if ($channelFollowed)
+    @if (isset($channelFollowed) && count($channelFollowed) > 0)
         <div class="section panel overflow-hidden swiper-parent">
             <div class="section-outer panel py-4 lg:py-6 dark:text-white">
                 <div class="container max-w-xl">
@@ -1369,120 +1383,11 @@
                                 </div>
                             </div>
                             <div class="block-content panel">
-                                <div class="swiper"
-                                    data-uc-swiper="items: 2; gap: 16; dots: .dot-nav; next: .nav-next; prev: .nav-prev; disable-class: d-none;"
+                                <div class="swiper" id="followed-channels-swiper"
+                                    data-uc-swiper="items: 2; gap: 16; dots: .dot-nav; next: .nav-next; prev: .nav-prev; disable-class: disabled;"
                                     data-uc-swiper-s="items: 3; gap: 24;" data-uc-swiper-l="items: 5; gap: 24;">
                                     <div class="swiper-wrapper">
-                                        @if (!empty($channelFollowed))
-                                            @foreach ($channelFollowed as $mostRead)
-                                                <div class="swiper-slide">
-                                                    <div>
-                                                        <article
-                                                            class="post type-post panel uc-transition-toggle vstack gap-2">
-                                                            <div class="post-media panel overflow-hidden">
-                                                                <div
-                                                                    class="featured-image bg-gray-25 dark:bg-gray-800 ratio ratio-3x2">
-                                                                    @if ($mostRead->type == 'video' || $mostRead->type == 'youtube')
-                                                                        <a href="{{ url('posts/' . $mostRead->slug) }}"
-                                                                            class="position-cover">
-                                                                            <img class="media-cover image uc-transition-scale-up uc-transition-opaque"
-                                                                                src="{{ $mostRead->video_thumb ?? $defaultImage }}"
-                                                                                data-src="{{ $mostRead->video_thumb ?? $defaultImage }}"
-                                                                                alt="{{ $mostRead->title ?? '' }}"
-                                                                                title="{{ $mostRead->title ?? '' }}"
-                                                                                loading="lazy" fetchpriority="high">
-                                                                            <div
-                                                                                class="post-category hstack gap-narrow justify-center align-items-center text-white">
-                                                                                <a class="text-none"
-                                                                                    href="{{ url('posts/' . $mostRead->slug) }}"
-                                                                                    title="{{ $mostRead->title }}"><i
-                                                                                        class="bi bi-play-circle font-size-45"></i></a>
-                                                                            </div>
-                                                                        </a>
-                                                                    @elseif($mostRead->type == 'post')
-                                                                        <a href="{{ url('posts/' . $mostRead->slug) }}"
-                                                                            class="position-cover">
-                                                                            <img class="media-cover image uc-transition-scale-up uc-transition-opaque"
-                                                                                src="{{ $mostRead->image ?? $defaultImage }}"
-                                                                                data-src="{{ $mostRead->image ?? $defaultImage }}"
-                                                                                alt="{{ $mostRead->title ?? '' }}"
-                                                                                title="{{ $mostRead->title ?? '' }}"
-                                                                                loading="lazy" fetchpriority="high">
-                                                                        </a>
-                                                                    @elseif($mostRead->type == 'audio')
-                                                                        <a href="{{ url('posts/' . $mostRead->slug) }}"
-                                                                            class="position-cover">
-                                                                            <img class="media-cover image uc-transition-scale-up uc-transition-opaque"
-                                                                                src="{{ $mostRead->image ?? $defaultImage }}"
-                                                                                data-src="{{ $mostRead->image ?? $defaultImage }}"
-                                                                                alt="{{ $mostRead->title ?? '' }}"
-                                                                                title="{{ $mostRead->title ?? '' }}"
-                                                                                loading="lazy" fetchpriority="high">
-                                                                        </a>
-                                                                         <div
-                                                                                class="post-category hstack gap-narrow justify-center align-items-center text-white">
-                                                                                <a class="text-none"
-                                                                                    href="{{ url('posts/' . $mostRead->slug) }}"
-                                                                                    title="{{ $mostRead->title }}"><i
-                                                                                        class="bi bi-play-circle font-size-45"></i></a>
-                                                                            </div>
-                                                                    @endif
-                                                                </div>
-                                                            </div>
-                                                            <div class="post-header panel vstack gap-1">
-                                                                <h3
-                                                                    class="post-title h6 m-0 text-truncate-2 hover:text-primary">
-                                                                    <a class="text-none duration-150"
-                                                                        href="{{ url('posts/' . $mostRead->slug) }}"
-                                                                        title="{{ $mostRead->title ?? '' }}">{{ $mostRead->title ?? '' }}</a>
-                                                                </h3>
-                                                                <div
-                                                                    class="post-meta panel hstack justify-start gap-1 fs-7 ft-tertiary fw-medium text-gray-900 dark:text-white text-opacity-60 d-none md:d-flex z-1 d-none md:d-block">
-                                                                    <div>
-                                                                        <div class="post-date hstack gap-narrow">
-                                                                            <a href="{{ url('channels/' . $mostRead->channel->slug) }}"
-                                                                                class="post-comments text-none hstack gap-narrow channel-button"
-                                                                                title="{{ $mostRead->channel->name ?? '' }}">
-                                                                                <span>{{ $mostRead->channel->name ?? '' }}</span>
-                                                                            </a>
-                                                                        </div>
-                                                                    </div>
-                                                                </div>
-                                                                <div
-                                                                    class="post-meta panel hstack justify-between gap-1 fs-7 ft-tertiary fw-medium text-gray-900 dark:text-white text-opacity-60 d-none md:d-flex z-1 d-none md:d-block">
-                                                                    <div>
-
-                                                                        <div class="post-date hstack gap-narrow">
-                                                                            <span
-                                                                                title="{{ $mostRead->publish_date_news }}">{{ $mostRead->publish_date ?? $mostRead->pubdate }}</span>
-                                                                        </div>
-                                                                    </div>
-                                                                    <div>
-                                                                        <a href="{{ url('posts/' . $mostRead->slug) }}#comment-form"
-                                                                            class="post-comments text-none hstack gap-narrow"
-                                                                            title="Comments">
-                                                                            <i class="icon-narrow unicon-chat"
-                                                                                title="Commetns"></i>
-                                                                            <span
-                                                                                title="Comments">{{ $mostRead->comment }}</span>
-                                                                        </a>
-                                                                    </div>
-                                                                    <div title="Views">
-                                                                        <i class="bi bi-eye fs-5"></i>
-                                                                        <span>{{ $mostRead->view_count }}</span>
-                                                                    </div>
-                                                                    <div title="Reaction">
-                                                                        <i class="bi bi-heart-fill ms-1"></i>
-                                                                        <span>{{ $mostRead->reaction }}</span>
-                                                                    </div>
-
-                                                                </div>
-                                                            </div>
-                                                        </article>
-                                                    </div>
-                                                </div>
-                                            @endforeach
-                                        @endif
+                                        @include('front_end.classic.pages.partials.followed_channels_slides', ['channelFollowed' => $channelFollowed])
                                     </div>
                                 </div>
                                 <div
@@ -1544,16 +1449,23 @@
                                                                     class="post-media panel overflow-hidden position-cover">
                                                                     <div
                                                                         class="featured-video bg-gray-700 ratio ratio-3x2">
-                                                                        @if ($videoPost->type === 'youtube')
-                                                                            <iframe width="1285" height="642"
-                                                                                title="YouTube video player"
-                                                                                src="{{ $videoPost->video }}"
-                                                                                {{-- YouTube video embed URL --}} id="video_frame"
-                                                                                referrerpolicy="strict-origin-when-cross-origin"
-                                                                                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                                                                                frameborder="0" allowfullscreen>
-                                                                            </iframe>
-                                                                        @elseif ($videoPost->type === 'video')
+                                                                         @if ($videoPost->type === 'youtube')
+                                                                            <div class="youtube-placeholder position-cover cursor-pointer" data-video-url="{{ $videoPost->video }}" style="cursor: pointer;">
+                                                                                <img class="media-cover image {{ !$loop->first ? 'lazy-img' : '' }}"
+                                                                                    src="{{ $loop->first ? ($videoPost->video_thumb ?? $videoPost->image ?? $defaultImage) : 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7' }}"
+                                                                                    data-src="{{ $videoPost->video_thumb ?? $videoPost->image ?? $defaultImage }}"
+                                                                                    alt="{{ $videoPost->title }}"
+                                                                                    @if($loop->first) fetchpriority="high" @endif
+                                                                                    style="width: 100%; height: 100%; object-fit: cover;">
+                                                                                <div class="position-cover d-flex align-items-center justify-content-center" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.25); display: flex; align-items: center; justify-content: center;">
+                                                                                    <div class="play-btn-rect" style="width: 68px; height: 48px; background-color: #ff0000; border-radius: 12px; display: flex; align-items: center; justify-content: center; transition: transform 0.2s;">
+                                                                                        <svg viewBox="0 0 24 24" width="26" height="26" fill="white">
+                                                                                            <path d="M8 5v14l11-7z"/>
+                                                                                        </svg>
+                                                                                    </div>
+                                                                                </div>
+                                                                            </div>
+                                                                        @elseif ($videoPost->type == 'video')
                                                                             <video
                                                                                 class="video-cover video-lazyload min-h-100px"
                                                                                 preload="none" loop playsinline>
@@ -1656,9 +1568,9 @@
                                                                             class="post-media panel overflow-hidden w-40px lg:w-64px rounded">
                                                                             <div
                                                                                 class="featured-video bg-gray-700 ratio ratio-3x4">
-                                                                                <img class="video-cover min-h-100px"
+                                                                                <img class="video-cover min-h-100px lazy-img"
                                                                                     alt="Video Thumbnail"
-                                                                                    src="{{ $videoPost->video_thumb ?? $videoPost->image }}"
+                                                                                    src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
                                                                                     data-src="{{ $videoPost->video_thumb ?? $videoPost->image }}" />
                                                                             </div>
                                                                             <div
@@ -1702,6 +1614,7 @@
     <!-- Video Section end -->
 
     <!-- Latest Section start -->
+    @if (isset($latesNews) && $latesNews->isNotEmpty())
     <div id="latest_news" class="latest-news section panel">
         <div class="section-outer panel py-4 lg:py-6">
             <div class="container max-w-xl">
@@ -1729,11 +1642,11 @@
                                                                         @if ($latest->type == 'video' || $latest->type == 'youtube')
                                                                             <a href="{{ url('posts/' . $latest->slug) }}"
                                                                                 class="position-cover">
-                                                                                <img class="media-cover image uc-transition-scale-up uc-transition-opaque"
-                                                                                    src="{{ $latest->video_thumb ?? asset('front_end/' . $theme . '/images/common/img-fallback.png') }}"
+                                                                                <img class="media-cover image uc-transition-scale-up uc-transition-opaque lazy-img"
+                                                                                    src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
                                                                                     data-src="{{ $latest->video_thumb }}"
                                                                                     alt="The Rise of AI-Powered Personal Assistants: How They Manage"
-                                                                                    loading="lazy" fetchpriority="high">
+                                                                                    loading="lazy">
                                                                                 <div
                                                                                     class="post-category hstack gap-narrow justify-center align-items-center text-white">
                                                                                     <a class="text-none"
@@ -1745,20 +1658,20 @@
                                                                         @elseif($latest->type == 'post')
                                                                             <a href="{{ url('posts/' . $latest->slug) }}"
                                                                                 class="position-cover">
-                                                                                <img class="media-cover image uc-transition-scale-up uc-transition-opaque"
-                                                                                    src="{{ $latest->image ?? asset('front_end/' . $theme . '/images/common/img-fallback.png') }}"
+                                                                                <img class="media-cover image uc-transition-scale-up uc-transition-opaque lazy-img"
+                                                                                    src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
                                                                                     data-src="{{ $latest->image }}"
                                                                                     alt="The Rise of AI-Powered Personal Assistants: How They Manage"
-                                                                                    loading="lazy" fetchpriority="high">
+                                                                                    loading="lazy">
                                                                             </a>
                                                                         @elseif($latest->type == 'audio')
                                                                             <a href="{{ url('posts/' . $latest->slug) }}"
                                                                                 class="position-cover">
-                                                                                <img class="media-cover image uc-transition-scale-up uc-transition-opaque"
-                                                                                    src="{{ $latest->image ?? asset('front_end/' . $theme . '/images/common/img-fallback.png') }}"
+                                                                                <img class="media-cover image uc-transition-scale-up uc-transition-opaque lazy-img"
+                                                                                    src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
                                                                                     data-src="{{ $latest->image }}"
                                                                                     alt="The Rise of AI-Powered Personal Assistants: How They Manage"
-                                                                                    loading="lazy" fetchpriority="high">
+                                                                                    loading="lazy">
                                                                             </a>
                                                                             <div
                                                                                     class="post-category hstack gap-narrow justify-center align-items-center text-white">
@@ -1791,13 +1704,13 @@
                                                                             class="post-comments text-none hstack gap-narrow"
                                                                             title="{{ $latest->channel->name ?? '' }}">
                                                                             @if ($latest->channel)
-                                                                                <img src="{{ url('storage/images/' . $latest->channel->logo) }}"
+                                                                                <img data-src="{{ url('storage/images/' . $latest->channel->logo) }}" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
                                                                                     alt="channel logo"
-                                                                                    class="rounded h-20px">
+                                                                                    class="rounded h-20px lazy-img">
                                                                             @else
-                                                                                <img src="{{ url('storage/images/default-logo.png') }}"
+                                                                                <img data-src="{{ url('storage/images/default-logo.png') }}" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
                                                                                     alt="default logo"
-                                                                                    class="rounded h-20px">
+                                                                                    class="rounded h-20px lazy-img">
                                                                             @endif
                                                                             {{ $latest->channel->name ?? 'Default Channel Name' }}
                                                                         </a>
@@ -1946,6 +1859,7 @@
             </div>
         </div>
     </div>
+    @endif
 
     <!-- Latest Section end -->
     </div>
