@@ -24,6 +24,7 @@ use Throwable;
 class AppServiceProvider extends ServiceProvider
 {
     const TIME_FORMATE = 'Y-m-d H:i';
+
     public function register()
     {
         //
@@ -31,18 +32,32 @@ class AppServiceProvider extends ServiceProvider
 
     public function boot()
     {
+        config(['debugbar.capture_ajax' => false]);
         Livewire::component('my-ad-report', MyAdReport::class);
         View::composer('*', function ($view) {
+            $request = request();
+            if ($request->attributes->has('shared_view_data')) {
+                $sharedViewData = $request->attributes->get('shared_view_data');
+                if (isset($sharedViewData['finalLanguageCode'])) {
+                    app()->setLocale($sharedViewData['finalLanguageCode']);
+                }
+                $view->with($sharedViewData);
+                return;
+            }
+
             try {
+                $composerData = [];
                 $userId = Auth::id() ?? 0;
 
                 // changes done here by P
                 /* OLD CODE:
                 $defaultImage = url('storage/' . $this->getSetting('default_image')->value);
                 */
-                static $allSettings = null;
-                if ($allSettings === null) {
-                    $allSettings = Setting::select('name', 'value', 'updated_at')->get()->keyBy('name');
+                if ($request->attributes->has('settings_cache')) {
+                    $allSettings = $request->attributes->get('settings_cache');
+                } else {
+                    $allSettings = \Illuminate\Support\Facades\DB::table('settings')->select('name', 'value', 'updated_at')->get()->keyBy('name');
+                    $request->attributes->set('settings_cache', $allSettings);
                 }
                 $getSetting = function ($name) use ($allSettings) {
                     return $allSettings->get($name);
@@ -54,7 +69,12 @@ class AppServiceProvider extends ServiceProvider
                 if ($userId) {
                     $subscribedLanguageIds = NewsLanguageSubscriber::where('user_id', $userId)->pluck('news_language_id');
                     if ($subscribedLanguageIds->isEmpty()) {
-                        $defaultLanguage = NewsLanguage::where('is_active', 1)->first();
+                        if ($request->attributes->has('active_language_cache')) {
+                            $defaultLanguage = $request->attributes->get('active_language_cache');
+                        } else {
+                            $defaultLanguage = NewsLanguage::where('is_active', 1)->first();
+                            $request->attributes->set('active_language_cache', $defaultLanguage);
+                        }
                         if ($defaultLanguage) {
                             NewsLanguageSubscriber::create([
                                 'user_id'          => $userId,
@@ -68,7 +88,12 @@ class AppServiceProvider extends ServiceProvider
                     if ($sessionLanguageId) {
                         $subscribedLanguageIds = collect([$sessionLanguageId]);
                     } else {
-                        $defaultActiveLanguage = NewsLanguage::where('is_active', 1)->first();
+                        if ($request->attributes->has('active_language_cache')) {
+                            $defaultActiveLanguage = $request->attributes->get('active_language_cache');
+                        } else {
+                            $defaultActiveLanguage = NewsLanguage::where('is_active', 1)->first();
+                            $request->attributes->set('active_language_cache', $defaultActiveLanguage);
+                        }
                         $subscribedLanguageIds = $defaultActiveLanguage ? collect([$defaultActiveLanguage->id]) : collect();
                     }
                 }
@@ -133,48 +158,21 @@ class AppServiceProvider extends ServiceProvider
                 }
                 */
 
-                // NEW OPTIMIZED CODE:
-                $topicIds = $topics->pluck('id');
-                if ($topicIds->isNotEmpty()) {
-                    $allTopicPosts = Post::select('id', 'image', 'video', 'video_thumb', 'type', 'title', 'slug', 'comment', 'publish_date', 'pubdate', 'status', 'view_count', 'reaction', 'topic_id')
-                        ->where('posts.status', 'active')
-                        ->whereIn('topic_id', $topicIds)
-                        ->whereHas('channel', function ($query) {
-                            $query->where('status', 'active');
-                        })
-                        ->when($subscribedLanguageIds->isNotEmpty(), function ($q) use ($subscribedLanguageIds) {
-                            $q->whereIn('posts.news_language_id', $subscribedLanguageIds);
-                        })
-                        ->orderBy('publish_date', 'DESC')
-                        ->get()
-                        ->groupBy('topic_id');
-                } else {
-                    $allTopicPosts = collect();
-                }
+                // We no longer fetch category posts statically on initial load.
+                // Instead, they are lazy loaded via AJAX when hovering/clicking on the dropdown.
 
-                foreach ($topics as $topic) {
-                    $topic->posts = ($allTopicPosts->get($topic->id) ?? collect())
-                        ->take(5)
-                        ->map(function ($item) use ($defaultImage) {
-                            $item->image = $item->image ?? $defaultImage;
-                            if ($item->publish_date) {
-                                $item->publish_date = Carbon::parse($item->publish_date)->diffForHumans();
-                            } elseif ($item->pubdate) {
-                                $item->pubdate = Carbon::parse($item->pubdate)->diffForHumans();
-                            }
-                            return $item;
-                        });
-                }
-
-                $topics = $topics->filter(function ($topic) {
-                    return $topic->posts->isNotEmpty();
-                })->values();
 
                 $langCode = 'zxx';
                 $dir      = 'ltr';
 
                 if ($subscribedLanguageIds->isNotEmpty()) {
-                    $newsLang = NewsLanguage::find($subscribedLanguageIds->first());
+                    $firstLangId = $subscribedLanguageIds->first();
+                    $cachedActiveLang = $request->attributes->get('active_language_cache');
+                    if ($cachedActiveLang && $cachedActiveLang->id == $firstLangId) {
+                        $newsLang = $cachedActiveLang;
+                    } else {
+                        $newsLang = NewsLanguage::find($firstLangId);
+                    }
                     if ($newsLang) {
                         $langCode = $newsLang->code ?? 'zxx';
                         $dir      = ($langCode === 'ar') ? 'rtl' : 'ltr';
@@ -238,11 +236,12 @@ class AppServiceProvider extends ServiceProvider
                 */
 
                 // NEW OPTIMIZED CODE:
-                $channelIds = $channels->pluck('id');
-                if ($channelIds->isNotEmpty()) {
-                    $allChannelPosts = Post::select('id', 'image', 'video', 'video_thumb', 'type', 'title', 'slug', 'comment', 'publish_date', 'reaction', 'pubdate', 'view_count', 'status', 'channel_id')
+                // We fetch only the top 4 posts per channel directly using simple, indexed queries.
+                // This prevents loading all channel posts from the DB and instantiating 1,000+ unnecessary models.
+                foreach ($channels as $channel) {
+                    $channel->posts = Post::select('id', 'image', 'video', 'video_thumb', 'type', 'title', 'slug', 'comment', 'publish_date', 'reaction', 'pubdate', 'view_count', 'status', 'channel_id')
                         ->where('posts.status', 'active')
-                        ->whereIn('channel_id', $channelIds)
+                        ->where('channel_id', $channel->id)
                         ->whereHas('channel', function ($query) {
                             $query->where('status', 'active');
                         })
@@ -256,15 +255,8 @@ class AppServiceProvider extends ServiceProvider
                             $q->whereIn('news_language_id', $subscribedLanguageIds);
                         })
                         ->orderBy('publish_date', 'DESC')
-                        ->get()
-                        ->groupBy('channel_id');
-                } else {
-                    $allChannelPosts = collect();
-                }
-
-                foreach ($channels as $channel) {
-                    $channel->posts = ($allChannelPosts->get($channel->id) ?? collect())
                         ->take(4)
+                        ->get()
                         ->map(function ($item) use ($defaultImage) {
                             $item->image = $item->image ?? $defaultImage;
                             if ($item->image === url('storage')) {
@@ -322,11 +314,17 @@ class AppServiceProvider extends ServiceProvider
                     ],
                 ];
                 $channels->prepend((object) $data[0]);
-                $socialsettings = Setting::pluck('value', 'name');
+                // changes done here by P
+                // $socialsettings = Setting::pluck('value', 'name');
+                $socialsettings = $allSettings->map(fn($item) => $item->value);
                 $news_languages_overwrite = NewsLanguage::where('status', 'active')->get();
                 $news_language_status     = NewsLanguageStatus::getCurrentStatus();
-                $newsletterSettings       = $this->getNewsletterSettings();
+                // changes done here by P
+                // $newsletterSettings       = $this->getNewsletterSettings();
+                $newsletterSettings       = $this->getNewsletterSettings($allSettings);
 
+                // changes done here by P
+                /* OLD CODE:
                 // ---------------------------------------------
                 // 1️⃣ Determine Locale based on Route
                 // ---------------------------------------------
@@ -390,7 +388,47 @@ class AppServiceProvider extends ServiceProvider
                         'finalLanguageCode' => $finalLanguageCode,
                     ]);
                 }
+                */
+                if (request()->is('admin*')) {
+                    $finalLanguageCode = Session::get('admin_locale', config('app.locale'));
+                    app()->setLocale($finalLanguageCode);
 
+                    $web_languages = $languages = Language::all();
+                    $composerData['languages']         = $languages;
+                    $composerData['finalLanguageCode'] = $finalLanguageCode;
+                } elseif (Session::has('web_locale') && Session::get('web_locale') != null) {
+                    $finalLanguageCode = Session::get('web_locale');
+                    app()->setLocale($finalLanguageCode);
+
+                    $web_languages = Language::all();
+                    $composerData['web_languages']     = $web_languages;
+                    $composerData['finalLanguageCode'] = $finalLanguageCode;
+                } else {
+                    $checklanguageCode = NewsLanguage::find($subscribedLanguageIds)->first();
+
+                    if ($checklanguageCode) {
+                        $webLanguage = Language::where('code', $checklanguageCode->code)->first();
+                    }
+
+                    if (empty($webLanguage)) {
+                        $defaultLocale = config('app.locale');
+                        $webLanguage   = Language::where('code', $defaultLocale)->first();
+                    }
+
+                    Session::put('web_locale', $webLanguage->code);
+                    Session::put('web_language', (object) $webLanguage->toArray());
+                    Session::save();
+
+                    app()->setLocale($webLanguage->code);
+
+                    $finalLanguageCode = $webLanguage->code;
+                    $web_languages     = Language::all();
+                    $composerData['web_languages']     = $web_languages;
+                    $composerData['finalLanguageCode'] = $finalLanguageCode;
+                }
+
+                // changes done here by P
+                /* OLD CODE:
                 $freeTrialSettings = Setting::whereIn('name', [
                     'free_trial_status',
                     'free_trial_post_limit',
@@ -398,8 +436,17 @@ class AppServiceProvider extends ServiceProvider
                     'free_trial_e_papers_and_magazines_limit'
                 ])->pluck('value', 'name');
                 $cookiesPopupStatus = Setting::select('value')->where('name', 'cookies_popup_status')->first();
+                */
+                $freeTrialSettings = [
+                    'free_trial_status'                       => $getSetting('free_trial_status')->value ?? '0',
+                    'free_trial_post_limit'                   => $getSetting('free_trial_post_limit')->value ?? '0',
+                    'free_trial_story_limit'                  => $getSetting('free_trial_story_limit')->value ?? '0',
+                    'free_trial_e_papers_and_magazines_limit' => $getSetting('free_trial_e_papers_and_magazines_limit')->value ?? '0',
+                ];
+                $cookiesPopupStatus = $getSetting('cookies_popup_status');
 
-                $view->with([
+                // changes done here by P
+                $composerData = array_merge($composerData, [
                     // changes done here by P
                     // 'favicon'                           => $this->getFavicon(),
                     'favicon'                           => $getSetting('favicon_icon') ? url('storage/' . $getSetting('favicon_icon')->value) : '',
@@ -418,7 +465,9 @@ class AppServiceProvider extends ServiceProvider
                     // 'termsOfCondition'                  => $this->getSetting('terms_conditions'),
                     'termsOfCondition'                  => $getSetting('terms_conditions'),
 
-                    'socialMedia'                       => Setting::select('name', 'value', 'updated_at')->get()->toArray(),
+                    // changes done here by P
+                    // 'socialMedia'                       => Setting::select('name', 'value', 'updated_at')->get()->toArray(),
+                    'socialMedia'                       => $allSettings->values()->toArray(),
                     'channels'                          => $channels,
                     'topics'                            => $topics,
 
@@ -504,7 +553,7 @@ class AppServiceProvider extends ServiceProvider
                     'dir'                               => $dir,
                     'newsletterSettings'                => $newsletterSettings,
                     'socialsettings'                    => $socialsettings,
-                    'firebaseConfig'                    => $this->getFirebaseConfig(),
+                    'firebaseConfig'                    => $this->getFirebaseConfig($allSettings),
                     'web_languages'                     => $web_languages,
                     'finalLanguageCode'                 => $finalLanguageCode,
                     'defaultImage'                      => $defaultImage,
@@ -518,6 +567,9 @@ class AppServiceProvider extends ServiceProvider
                     // 'web_font'                          => $this->getSetting('web_font') ? $this->getSetting('web_font')->value : 'Poppins',
                     'web_font'                          => $getSetting('web_font') ? $getSetting('web_font')->value : 'Poppins',
                 ]);
+                $sharedViewData = $composerData;
+                request()->attributes->set('shared_view_data', $sharedViewData);
+                $view->with($sharedViewData);
             } catch (Throwable $e) {
                 Log::error('Error in View Composer: ' . $e->getMessage());
                 return $e;
@@ -610,12 +662,16 @@ class AppServiceProvider extends ServiceProvider
     }
     protected function getTheme()
     {
+        // changes done here by P
+        /* OLD CODE:
         try {
             $themeData = Theme::select('slug')->where('is_default', '1')->first();
             return optional($themeData)->slug ?? 'classic';
         } catch (Throwable $e) {
             return "";
         }
+        */
+        return getTheme();
     }
 
     protected function getFavicon()
@@ -645,7 +701,12 @@ class AppServiceProvider extends ServiceProvider
                     $subscribedLanguageIds = collect([$sessionLanguageId]);
                 } else {
                     // If not selected, use the first active language
-                    $defaultActiveLanguage = NewsLanguage::where('is_active', 1)->first();
+                    if (static::$activeLanguageCache !== null) {
+                        $defaultActiveLanguage = static::$activeLanguageCache;
+                    } else {
+                        $defaultActiveLanguage = NewsLanguage::where('is_active', 1)->first();
+                        static::$activeLanguageCache = $defaultActiveLanguage;
+                    }
                     $subscribedLanguageIds = $defaultActiveLanguage ? collect([$defaultActiveLanguage->id]) : collect();
                 }
             }
@@ -665,14 +726,27 @@ class AppServiceProvider extends ServiceProvider
         }
     }
 
-    private function getNewsletterSettings()
+    private function getNewsletterSettings($allSettings = null)
     {
+        // changes done here by P
+        /* OLD CODE:
         $settings = Setting::whereIn('name', [
             'subscribe_model_title',
             'subscribe_model_sub_title',
             'subscribe_model_status',
             'subscribe_model_image',
         ])->pluck('value', 'name');
+        */
+        if ($allSettings) {
+            $settings = $allSettings->map(fn($item) => $item->value);
+        } else {
+            $settings = Setting::whereIn('name', [
+                'subscribe_model_title',
+                'subscribe_model_sub_title',
+                'subscribe_model_status',
+                'subscribe_model_image',
+            ])->pluck('value', 'name');
+        }
 
         return [
             'title'    => $settings['subscribe_model_title'] ?? 'Subscribe to the Newsletter',
@@ -682,9 +756,11 @@ class AppServiceProvider extends ServiceProvider
         ];
     }
 
-    protected function getFirebaseConfig()
+    protected function getFirebaseConfig($allSettings = null)
     {
         try {
+            // changes done here by P
+            /* OLD CODE:
             $firebaseSettings = Setting::whereIn('name', [
                 'apiKey',
                 'authDomain',
@@ -694,6 +770,20 @@ class AppServiceProvider extends ServiceProvider
                 'appId',
                 'measurementId',
             ])->pluck('value', 'name');
+            */
+            if ($allSettings) {
+                $firebaseSettings = $allSettings->map(fn($item) => $item->value);
+            } else {
+                $firebaseSettings = Setting::whereIn('name', [
+                    'apiKey',
+                    'authDomain',
+                    'projectId',
+                    'storageBucket',
+                    'messagingSenderId',
+                    'appId',
+                    'measurementId',
+                ])->pluck('value', 'name');
+            }
 
             return [
                 'apiKey'            => $firebaseSettings['apiKey'] ?? '',

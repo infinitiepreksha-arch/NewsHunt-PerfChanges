@@ -79,4 +79,30 @@ class Post extends Model implements ReactableInterface
             ->where('responder_id', $responder->id)
             ->where('responder_type', get_class($responder))->exists();
     }
+
+    public function getVideoThumbAttribute($value)
+    {
+        if (empty($value)) {
+            return $value;
+        }
+
+        if (str_contains($value, 'img.youtube.com') || str_contains($value, 'youtube.com/vi')) {
+            return str_replace('maxresdefault.jpg', 'mqdefault.jpg', $value);
+        }
+
+        return $value;
+    }
+
+    public function getImageAttribute($value)
+    {
+        if (empty($value)) {
+            return $value;
+        }
+
+        if (str_contains($value, 'img.youtube.com') || str_contains($value, 'youtube.com/vi')) {
+            return str_replace('maxresdefault.jpg', 'sddefault.jpg', $value);
+        }
+
+        return $value;
+    }
 }
