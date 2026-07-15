@@ -286,3 +286,7 @@
         </div>
     </div>
 @endsection
+
+@section('script')
+    <script src="https://unpkg.com/@dotlottie/player-component@latest/dist/dotlottie-player.js"></script>
+@endsection

@@ -891,3 +891,7 @@
         @endif
     </div>
 @endsection
+
+@section('scripts')
+    <script src="https://unpkg.com/@dotlottie/player-component@latest/dist/dotlottie-player.js"></script>
+@endsection

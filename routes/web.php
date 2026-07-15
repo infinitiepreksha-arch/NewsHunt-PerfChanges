@@ -1,5 +1,5 @@
 <?php
-
+namespace App\Http\Controllers;
 use App\Http\Controllers\AboutUsController;
 use App\Http\Controllers\AdminControllers\AdminUserController;
 use App\Http\Controllers\AdminControllers\AudioPostAdminController;
@@ -176,11 +176,15 @@ Route::middleware(['web', 'web.locale'])->group(function () {
 
     Route::get('/preview/privacy-policies', [HomeController::class, 'previewPrivacyPolicies'])
         ->name('preview.privacypolicies');
-
     Route::get('/preview/terms-conditions', [HomeController::class, 'previewTermsConditions'])
         ->name('preview.termsconditions');
 
     Route::get('/channel-posts/{channelId}', [HomeController::class, 'getChannelPosts']);
+    Route::get('/topic-posts/{topicId}', [HomeController::class, 'getTopicPosts']);
+    Route::get('/most-read-remaining', [HomeController::class, 'getRemainingMostRead']);
+    Route::get('/web-stories-remaining', [HomeController::class, 'getRemainingStories']);
+    Route::get('/top-posts-remaining', [HomeController::class, 'getRemainingTopPosts']);
+    Route::get('/followed-channels-remaining', [HomeController::class, 'getRemainingFollowedChannels']);
 
     Route::post('change-password-via-email', [HomeController::class, 'changeAuthPasswordViaEmail'])->name('change-password-via-email.update');
     Route::get('channels/{channel?}', [ChannelFrontController::class, 'index']);
@@ -677,6 +681,11 @@ Route::get('clear_cache', static function () {
     Artisan::call('optimize:clear');
     Artisan::call('debugbar:clear');
     return redirect()->back();
+});
+
+Route::get('images-compress', static function () {
+    Artisan::call('images:compress');
+    return "<pre>" . Artisan::output() . "</pre>";
 });
 
 Route::get('/run-scheduler', function () {

@@ -408,8 +408,9 @@
                                                         <label
                                                             class="featured-image bg-gray-25 dark:bg-gray-800 ratio ratio-3x2"
                                                             for="NewsLanguage_{{ $news_language->id }}">
-                                                            <img src="{{ asset('storage/' . $news_language->image) ?? '' }}"
-                                                                class="media-cover image uc-transition-scale-up uc-transition-opaque"
+                                                            <img data-src="{{ asset('storage/' . $news_language->image) ?? '' }}"
+                                                                src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
+                                                                class="media-cover image uc-transition-scale-up uc-transition-opaque lazy-img"
                                                                 alt="{{ $news_language->name }}" />
                                                         </label>
                                                     </div>
@@ -466,8 +467,9 @@
                                                     <label
                                                         class="featured-image bg-gray-25 dark:bg-gray-800 ratio ratio-3x2"
                                                         for="WebLanguage_{{ $language->code }}">
-                                                        <img src="{{ $language->image }}"
-                                                            class="media-cover image uc-transition-scale-up uc-transition-opaque"
+                                                        <img data-src="{{ $language->image }}"
+                                                            src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
+                                                            class="media-cover image uc-transition-scale-up uc-transition-opaque lazy-img"
                                                             alt="{{ $language->name }}" />
                                                     </label>
                                                 </div>
@@ -965,16 +967,16 @@
                                                                                 <a href="{{ url('posts/' . $fistChannelPost->slug) }}"
                                                                                     class="position-cover">
                                                                                     @if ($fistChannelPost->type == 'post')
-                                                                                        <img class="media-cover image uc-transition-scale-up uc-transition-opaque"
-                                                                                            src="{{ $fistChannelPost->image ?? $defaultImage }}"
+                                                                                        <img class="media-cover image uc-transition-scale-up uc-transition-opaque lazy-img"
+                                                                                            src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
                                                                                             data-src="{{ $fistChannelPost->image ?? $defaultImage }}"
                                                                                             alt="{{ $fistChannelPost->title ?? '' }}"
                                                                                             title="{{ $fistChannelPost->title ?? '' }}"
                                                                                             loading="lazy"
                                                                                             fetchpriority="high">
                                                                                     @elseif($fistChannelPost->type == 'audio')
-                                                                                        <img class="media-cover image uc-transition-scale-up uc-transition-opaque"
-                                                                                            src="{{ $fistChannelPost->image ?? $defaultImage }}"
+                                                                                        <img class="media-cover image uc-transition-scale-up uc-transition-opaque lazy-img"
+                                                                                            src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
                                                                                             data-src="{{ $fistChannelPost->image ?? $defaultImage }}"
                                                                                             alt="{{ $fistChannelPost->title ?? '' }}"
                                                                                             title="{{ $fistChannelPost->title ?? '' }}"
@@ -988,8 +990,8 @@
                                                                                                     class="bi bi-play-circle font-size-45"></i></a>
                                                                                         </div>
                                                                                     @elseif($fistChannelPost->type == 'youtube' || $fistChannelPost->type == 'video')
-                                                                                        <img class="media-cover image uc-transition-scale-up uc-transition-opaque"
-                                                                                            src="{{ $fistChannelPost->video_thumb ?? $defaultImage }}"
+                                                                                        <img class="media-cover image uc-transition-scale-up uc-transition-opaque lazy-img"
+                                                                                            src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
                                                                                             data-src="{{ $fistChannelPost->video_thumb ?? $defaultImage }}"
                                                                                             alt="{{ $fistChannelPost->title ?? '' }}"
                                                                                             title="{{ $fistChannelPost->title ?? '' }}"
@@ -1069,115 +1071,15 @@
                             @foreach ($topics as $topic)
                                 <li>
                                     <a href="#">{{ $topic->name }}<span data-uc-navbar-parent-icon></span></a>
-                                    <div class="uc-navbar-dropdown ft-primary text-unset p-3 pb-4 rounded-0 hide-scrollbar"
+                                    <div class="uc-navbar-dropdown topic-dropdown ft-primary text-unset p-3 pb-4 rounded-0 hide-scrollbar"
+                                        data-topic-id="{{ $topic->id }}"
                                         data-uc-drop="offset: 0; boundary: !.navbar-container; stretch: x; animation: uc-animation-slide-top-small; duration: 150;">
                                         <div>
-                                            <div class="row child-cols col-match g-2">
-                                                @if ($topic->posts->isNotEmpty())
-                                                    @foreach ($topic->posts as $lifestylePosts)
-                                                        <div>
-                                                            <article
-                                                                class="post type-post panel uc-transition-toggle vstack gap-1">
-                                                                <div class="post-media panel overflow-hidden">
-                                                                    <div
-                                                                        class="featured-image bg-gray-25 dark:bg-gray-800 ratio ratio-16x9">
-                                                                        <a href="{{ url('posts/' . $lifestylePosts->slug) }}"
-                                                                            class="position-cover">
-                                                                            @if ($lifestylePosts->type == 'post')
-                                                                                <img class="media-cover image uc-transition-scale-up uc-transition-opaque"
-                                                                                    src="{{ $lifestylePosts->image ?? '' }}"
-                                                                                    data-src="{{ $lifestylePosts->image ?? '' }}"
-                                                                                    alt="{{ $lifestylePosts->title ?? '' }}"
-                                                                                    title="{{ $lifestylePosts->title ?? '' }}"
-                                                                                    loading="lazy"
-                                                                                    fetchpriority="high">
-                                                                            @elseif($lifestylePosts->type == 'youtube' || $lifestylePosts->type == 'video')
-                                                                                <img class="media-cover image uc-transition-scale-up uc-transition-opaque"
-                                                                                    src="{{ $lifestylePosts->video_thumb ?? '' }}"
-                                                                                    data-src="{{ $lifestylePosts->video_thumb ?? '' }}"
-                                                                                    alt="{{ $lifestylePosts->title ?? '' }}"
-                                                                                    title="{{ $lifestylePosts->title ?? '' }}"
-                                                                                    loading="lazy"
-                                                                                    fetchpriority="high">
-                                                                                <div
-                                                                                    class="post-category hstack gap-narrow justify-center align-items-center text-white">
-                                                                                    <a class="text-none"
-                                                                                        href="{{ url('posts/' . $fistChannelPost->slug) }}"
-                                                                                        title="{{ $fistChannelPost->title }}"><i
-                                                                                            class="bi bi-play-circle font-size-45"></i></a>
-                                                                                </div>
-                                                                            @elseif($lifestylePosts->type == 'audio')
-                                                                                <img class="media-cover image uc-transition-scale-up uc-transition-opaque"
-                                                                                    src="{{ $lifestylePosts->image ?? '' }}"
-                                                                                    data-src="{{ $lifestylePosts->image ?? '' }}"
-                                                                                    alt="{{ $lifestylePosts->title ?? '' }}"
-                                                                                    title="{{ $lifestylePosts->title ?? '' }}"
-                                                                                    loading="lazy"
-                                                                                    fetchpriority="high">
-                                                                                <div
-                                                                                    class="post-category hstack gap-narrow justify-center align-items-center text-white">
-                                                                                    <a class="text-none"
-                                                                                        href="{{ url('posts/' . $fistChannelPost->slug) }}"
-                                                                                        title="{{ $fistChannelPost->title }}"><i
-                                                                                            class="bi bi-play-circle font-size-45"></i></a>
-                                                                                </div>
-                                                                            @else
-                                                                                <img class="media-cover image uc-transition-scale-up uc-transition-opaque"
-                                                                                    src="{{ $lifestylePosts->video_thumb ?? '' }}"
-                                                                                    data-src="{{ $lifestylePosts->video_thumb ?? '' }}"
-                                                                                    alt="{{ $lifestylePosts->title ?? '' }}"
-                                                                                    title="{{ $lifestylePosts->title ?? '' }}"
-                                                                                    loading="lazy"
-                                                                                    fetchpriority="high">
-                                                                                <div
-                                                                                    class="post-category hstack gap-narrow justify-center align-items-center text-white">
-                                                                                    <a class="text-none"
-                                                                                        href="{{ url('posts/' . $lifestylePosts->slug) }}"
-                                                                                        title="{{ $lifestylePosts->title }}"><i
-                                                                                            class="bi bi-play-circle font-size-45"></i></a>
-                                                                                </div>
-                                                                            @endif
-                                                                        </a>
-                                                                    </div>
-                                                                </div>
-                                                                <div class="post-header panel vstack gap-narrow">
-                                                                    <h3 class="post-title h6 m-0 text-truncate-2">
-                                                                        <a class="text-none hover:text-primary duration-150"
-                                                                            href="{{ url('posts/' . $lifestylePosts->slug) }}"
-                                                                            title="{{ $lifestylePosts->title ?? '' }}">{{ $lifestylePosts->title ?? '' }}</a>
-                                                                    </h3>
-                                                                    <div
-                                                                        class="post-meta panel hstack justify-start gap-1 fs-7 ft-tertiary fw-medium text-gray-900 dark:text-white text-opacity-60 d-none md:d-flex z-1 d-none md:d-block">
-                                                                        <div>
-                                                                            <div class="post-date hstack gap-narrow">
-                                                                                <span
-                                                                                    title="{{ $lifestylePosts->publish_date ?? $lifestylePosts->pubdate }}">{{ $lifestylePosts->publish_date ?? $lifestylePosts->pubdate }}</span>
-                                                                            </div>
-                                                                        </div>
-                                                                        <div>
-                                                                            <a href="{{ url('posts/' . $lifestylePosts->slug) }}#comment-form"
-                                                                                class="post-comments text-none hstack gap-narrow"
-                                                                                title="Commetns">
-                                                                                <i class="icon-narrow unicon-chat"></i>
-                                                                                <span>{{ $lifestylePosts->comment ?? '' }}</span>
-
-
-                                                                                <i class="bi bi-eye fs-5 ms-1"
-                                                                                    title="Views"></i>
-                                                                                <span
-                                                                                    title="Views">{{ $lifestylePosts->view_count }}</span>
-
-                                                                                <i class="bi bi-heart-fill ms-1"></i>
-                                                                                <span>{{ $lifestylePosts->reaction ?? '' }}</span>
-                                                                            </a>
-                                                                        </div>
-
-                                                                    </div>
-                                                                </div>
-                                                            </article>
-                                                        </div>
-                                                    @endforeach
-                                                @endif
+                                            <div class="dropdown-loader w-full text-center py-4">
+                                                <i class="bi bi-hourglass-split fs-3"></i>
+                                                <p class="m-0 fs-7">Loading...</p>
+                                            </div>
+                                            <div class="row child-cols col-match g-2 dropdown-content-wrapper">
                                             </div>
                                         </div>
                                         <div class="text-end mt-1">
@@ -1189,6 +1091,7 @@
                                     </div>
                                 </li>
                             @endforeach
+
 
                             <li>
                                 <a href="#" aria-label="More options"><i
