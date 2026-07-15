@@ -55,6 +55,9 @@
                             <li><a class="uc-link border-bottom  hover:text-gray-900 dark:hover:text-white duration-150"
                                     href="{{ url('/terms-and-condition') }}">{{ __('frontend-labels.sponsor_ads.terms_conditions') }}</a>
                             </li>
+                            <li><a class="uc-link border-bottom  hover:text-gray-900 dark:hover:text-white duration-150"
+                                    href="{{ url('/sitemap.xml') }}">{{ __('frontend-labels.sponsor_ads.sitemap') }}</a>
+                            </li>
                         </ul>
                     </div>
 

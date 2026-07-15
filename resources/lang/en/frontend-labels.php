@@ -224,6 +224,7 @@ return [
         'no_transactions_found'               => 'No transactions found',
         'terms_conditions'                    => 'Terms and Conditions',
         'privacy_policy'                      => 'Privacy Policy',
+        'sitemap'                             => 'Sitemap',
         'copyright'                           => 'Copyright',
         'update_profile'                      => 'Update Profile',
         'change_password'                     => 'Change Password',
