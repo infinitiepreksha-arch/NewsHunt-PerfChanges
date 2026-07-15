@@ -40,6 +40,14 @@ class InstallerController extends Controller
             $domainUrl = request()->getHost();
             $purchaseCode = $request->input('purchase_code');
 
+            // Save the purchase code in the environment file
+            EnvSet::setKey('APPSECRET', $purchaseCode);
+            EnvSet::save();
+
+            return redirect()->route('install.server');
+
+
+
             $itemId = "55506918";
             $response = Http::withHeaders([
                 'Accept' => 'application/json',
@@ -66,8 +74,8 @@ class InstallerController extends Controller
             }
 
             // Save the purchase code in the environment file
-            EnvSet::setKey('APPSECRET', $purchaseCode);
-            EnvSet::save();
+            // EnvSet::setKey('APPSECRET', $purchaseCode);
+            // EnvSet::save();
 
             return redirect()->route('install.server');
         } catch (\Throwable $e) {

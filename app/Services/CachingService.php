@@ -27,7 +27,7 @@ class CachingService {
      * @return mixed|string
      */
     public static function getSystemSettings(array|string $key = '*') {
-        $settings = self::cacheRemember(config('constants.CACHE.SETTINGS'), static function () {
+        $settings = Cache::rememberForever(config('constants.CACHE.SETTINGS'), static function () {
             return Setting::all()->pluck('value', 'name');
         });
 
@@ -59,7 +59,7 @@ class CachingService {
     }
 
     public static function getLanguages() {
-        return self::cacheRemember(config('constants.CACHE.LANGUAGE'), static function () {
+        return Cache::rememberForever(config('constants.CACHE.LANGUAGE'), static function () {
             return Language::all();
         });
     }
