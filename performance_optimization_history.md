@@ -606,3 +606,54 @@ if (!empty($displayedIds)) {
 ### Impact & Scalability
 * **Benefit**: Guarantees zero side-by-side or overlapping duplicate posts during dynamic sliding pagination, even in the presence of duplicate feed records.
 * **Caution**: All new sliders that implement dynamic AJAX pagination must populate the `data-post-id` attribute on slide wrapper tags to support dynamic exclusions.
+
+---
+
+## 13. Redirect-Based Search, Dynamic AJAX Filtering, and Viewport Syncing
+
+### Root Cause
+1. **In-Modal Search Bottleneck**: The search feature originally loaded and displayed autocomplete suggestion results in a restricted modal dropdown window. Users could not easily browse large result collections, sort by relevance/likes/comments, or apply granular filters.
+2. **N+1 and Union Query Exceptions**: The unified search queries over Articles (`posts`), Web Stories (`stories`), and E-Newspapers (`e_newspapers`) encountered SQL column exceptions (due to missing `title` columns in `e_newspapers`) and PHP property exceptions (due to mismatches in comments attributes).
+3. **Redundant Form Submissions & Layout Desync**: When using both mobile Offcanvas drawers and desktop sidebars for filtering, checkboxes and keywords desynchronized. Triggering any checkbox caused a full page reload rather than dynamic in-place updates.
+
+### The Solution & Rationale
+1. **Full-Page Redirect Routing**: Refactored the modal search triggers to redirect users directly to a dedicated `/posts?search=query` search result page.
+2. **Unified Union Query Mapping**: Refactored the backend controllers to merge Articles, Videos, YouTube, Audios, Web Stories, and Newspapers/Magazines via a SQL `UNION` query, normalizing column aliases (like `channels.name as title` for E-Newspapers, and `comment` fields) to avoid database and rendering errors.
+3. **AJAX Refreshes & pushState Navigation**: Intercepted page link and filter input modifications using AJAX fetch requests. The address bar URL is updated dynamically via `window.history.pushState` to support sharing/saving.
+4. **Interactive Viewport Synchronization**: Implemented a form mirroring mechanism in JavaScript that automatically duplicates selections between mobile offcanvas and desktop sidebar inputs, resolving desync. Added dynamic mutual exclusion for the "All" channel selector.
+5. **Dynamic Search Count Header**: Replaced static centered headers with a compact, left-aligned dynamic count block at the top of the AJAX-loaded posts grid partial.
+
+### Files Modified
+* [SearchPostController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/SearchPostController.php)
+* [search-result.blade.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/resources/views/front_end/classic/pages/search-result.blade.php)
+* [search-news.js](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/public/front_end/classic/js/custom/search-news.js)
+* [header.blade.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/resources/views/front_end/classic/layout/header.blade.php)
+
+### Files Created
+* [search_result_posts.blade.php (NEW)](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/resources/views/front_end/classic/pages/partials/search_result_posts.blade.php)
+
+### Code Comparison
+```javascript
+// [Viewport Form Synchronization - search-news.js]
+function syncForms(sourceForm, targetForm) {
+    if (!sourceForm || !targetForm) return;
+    // Copy text inputs
+    ['search', 'filter'].forEach(function (name) {
+        var sourceEl = sourceForm.querySelector('[name="' + name + '"]');
+        var targetEl = targetForm.querySelector('[name="' + name + '"]');
+        if (sourceEl && targetEl) targetEl.value = sourceEl.value;
+    });
+    // Copy checkboxes
+    ['post_type[]', 'channel[]', 'topic[]'].forEach(function (name) {
+        var sourceChecked = Array.from(sourceForm.querySelectorAll('input[name="' + name + '"]:checked')).map(el => el.value);
+        targetForm.querySelectorAll('input[name="' + name + '"]').forEach(input => {
+            input.checked = sourceChecked.indexOf(input.value) !== -1;
+        });
+    });
+}
+```
+
+### Impact & Scalability
+* **Benefit**: Users get instant, animated search updates without full-page reloads. Viewports stay perfectly synchronized on both mobile and desktop.
+* **Caution**: Any new filter criteria or sorting properties added in the future must be registered in the `syncForms` array parameters to ensure synchronization.
+
