@@ -13,6 +13,11 @@
         .swiper-nav-hidden {
             display: none !important;
         }
+
+        /* Prevent vertical layout shift of Swiper slides before JS initialization */
+        .swiper:not(.swiper-initialized) .swiper-slide:not(:first-child) {
+            display: none !important;
+        }
     </style>
     <div id="wrapper" class="wrap overflow-hidden-x">
         <!-- Top Posts Section start -->
@@ -41,10 +46,11 @@
                                                                             <a href="{{ url('posts/' . $top_post->slug) }}"
                                                                                 class="position-cover">
                                                                                 <img class="media-cover image uc-transition-scale-up uc-transition-opaque"
-                                                                                    src="{{ $top_post->video_thumb ?? $defaultImage }}"
-                                                                                    data-src="{{ $top_post->video_thumb ?? $defaultImage }}"
-                                                                                    alt="Hidden Gems: Underrated Travel Destinations Around the World"
-                                                                                    loading="lazy">
+                                                                                     src="{{ $top_post->video_thumb ?? $defaultImage }}"
+                                                                                     data-src="{{ $top_post->video_thumb ?? $defaultImage }}"
+                                                                                     alt="Hidden Gems: Underrated Travel Destinations Around the World"
+                                                                                     @if($loop->iteration > 4) loading="lazy" @endif
+                                                                                     @if($loop->first) fetchpriority="high" @endif>
                                                                                 <div
                                                                                     class="post-category hstack gap-narrow justify-center align-items-center text-white">
                                                                                     <a class="text-none"
@@ -60,7 +66,8 @@
                                                                                     src="{{ $top_post->image ?? $defaultImage }}"
                                                                                     data-src="{{ $top_post->image ?? $defaultImage }}"
                                                                                     alt="Hidden Gems: Underrated Travel Destinations Around the World"
-                                                                                    loading="lazy">
+                                                                                    @if($loop->iteration > 4) loading="lazy" @endif
+                                                                                    @if($loop->first) fetchpriority="high" @endif>
                                                                                 <div
                                                                                     class="post-category hstack gap-narrow justify-center align-items-center text-white">
                                                                                 </div>
@@ -72,7 +79,8 @@
                                                                                     src="{{ $top_post->image ?? $defaultImage }}"
                                                                                     data-src="{{ $top_post->image ?? $defaultImage }}"
                                                                                     alt="Hidden Gems: Underrated Travel Destinations Around the World"
-                                                                                    loading="lazy">
+                                                                                    @if($loop->iteration > 4) loading="lazy" @endif
+                                                                                    @if($loop->first) fetchpriority="high" @endif>
                                                                                 <div
                                                                                     class="post-category hstack gap-narrow justify-center align-items-center text-white">
                                                                                 </div>
@@ -96,7 +104,9 @@
                                                                         <img src="{{ url('storage/images/' . $top_post->channel->logo) }}"
                                                                             alt="channel logo"
                                                                             title="{{ $top_post->channel->name ?? '' }}"
-                                                                            class="rounded-pill h-20px">
+                                                                            class="rounded-pill h-20px"
+                                                                            width="20"
+                                                                            height="20">
                                                                         <span
                                                                             title="{{ $top_post->channel->name ?? '' }}">{{ $top_post->channel->name }}</span>
                                                                     </a>
@@ -209,10 +219,12 @@
                                                                                                         <a href="{{ url('channels/' . $banner->channel->slug) }}"
                                                                                                             class="post-comments text-none hstack gap-narrow"
                                                                                                             title="{{ $banner->channel->name ?? '' }}">
-                                                                                                            <img src="{{ url('storage/images/' . $banner->channel->logo ?? '') }}"
-                                                                                                                alt="chanel logo"
-                                                                                                                class="rounded h-20px"
-                                                                                                                decoding="async">
+                                                                                                             <img src="{{ url('storage/images/' . $banner->channel->logo ?? '') }}"
+                                                                                                                 alt="chanel logo"
+                                                                                                                 class="rounded h-20px"
+                                                                                                                 decoding="async"
+                                                                                                                 width="20"
+                                                                                                                 height="20">
                                                                                                             {{ $banner->channel->name ?? '' }}
                                                                                                         </a>
                                                                                                     @endif
@@ -665,7 +677,7 @@
                                                                         <a href="{{ url('channels/' . $enewspaper->channel->slug) }}"
                                                                             title="{{ $enewspaper->channel->name }}"><img
                                                                                 data-src="{{ url('storage/images/' . $enewspaper->channel->logo) }}" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
-                                                                                alt="Channel Logo" class="h-20px lazy-img"></a>
+                                                                                alt="Channel Logo" class="h-20px lazy-img" width="20" height="20"></a>
                                                                         <a href="{{ url('channels/' . $enewspaper->channel->slug) }}"
                                                                             class="text-black h6 dark:text-white text-none fw-bold"
                                                                             title="{{ $enewspaper->channel->name }}">{{ $enewspaper->channel->name }}</a>
@@ -750,7 +762,7 @@
                                                                 <a href="{{ url('channels/' . $magazine->channel->slug) }}"
                                                                     title="{{ $magazine->channel->name }}"><img
                                                                         data-src="{{ url('storage/images/' . $magazine->channel->logo) }}" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
-                                                                        alt="Channel Logo" class="h-20px lazy-img"></a>
+                                                                        alt="Channel Logo" class="h-20px lazy-img" width="20" height="20"></a>
                                                                 <a href="{{ url('channels/' . $magazine->channel->slug) }}"
                                                                     class="post-comments text-none hstack gap-narrow channel-button"
                                                                     title="ABP Live">
@@ -1712,11 +1724,15 @@
                                                                             @if ($latest->channel)
                                                                                 <img data-src="{{ url('storage/images/' . $latest->channel->logo) }}" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
                                                                                     alt="channel logo"
-                                                                                    class="rounded h-20px lazy-img">
+                                                                                    class="rounded h-20px lazy-img"
+                                                                                    width="20"
+                                                                                    height="20">
                                                                             @else
                                                                                 <img data-src="{{ url('storage/images/default-logo.png') }}" src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
                                                                                     alt="default logo"
-                                                                                    class="rounded h-20px lazy-img">
+                                                                                    class="rounded h-20px lazy-img"
+                                                                                    width="20"
+                                                                                    height="20">
                                                                             @endif
                                                                             {{ $latest->channel->name ?? 'Default Channel Name' }}
                                                                         </a>

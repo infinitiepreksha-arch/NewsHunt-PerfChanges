@@ -537,8 +537,9 @@
                                     <div class="post-media panel overflow-hidden">
                                         <label class="featured-image bg-gray-25 dark:bg-gray-800 ratio ratio-3x2"
                                             for="WebLanguage_{{ $language->code }}">
-                                            <img src="{{ $language->image }}"
-                                                class="media-cover image uc-transition-scale-up uc-transition-opaque"
+                                            <img data-src="{{ $language->image }}"
+                                                src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
+                                                class="media-cover image uc-transition-scale-up uc-transition-opaque lazy-img"
                                                 alt="{{ $language->name }}" />
                                         </label>
                                     </div>

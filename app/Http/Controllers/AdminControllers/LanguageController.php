@@ -85,7 +85,7 @@ class LanguageController extends Controller
         try {
             $data = $request->all();
             if ($request->hasFile('image')) {
-                $data['image'] = FileService::upload($request->file('image'), $this->uploadFolder);
+                $data['image'] = FileService::resizeAndCompressUpload($request->file('image'), $this->uploadFolder, 150, null, 'webp');
             }
 
             Language::create($data);

@@ -689,3 +689,20 @@ Deferred AJAX loading for Navbar Category Dropdowns and homepage sliders (Most R
   9. **Interactive Channel 'All' Toggle**: Refactored the "All" channel option into a dynamic, mutually exclusive checkbox that handles selection states and synchronizes across viewports.
   10. **Swiper Navigation Arrow States Fix**: Updated CSS overrides in `index.blade.php` to target next arrows only, and added a custom `.swiper-nav-hidden` class. Implemented dynamic arrow visibility inside `custom-jquery.js` to hide the previous (`<`) arrow at slide index 0 and hide the next (`>`) arrow when all database records are exhausted. This custom class prevents UIKit/Swiper from overriding the visibility rules on page load (specifically fixing the Web Stories previous arrow visibility).
 
+### [2026-07-16] Page Speed & Core Web Vitals Optimization
+
+* **Feature**: Optimized home page PageSpeed score (focusing on LCP and CLS) by lazy-loading flag modals, adding explicit dimensions to channel logos, preconnecting to openweathermap, and hiding non-initialized Swiper slides.
+* **Files Modified**:
+  * [app/Http/Controllers/AdminControllers/LanguageController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/AdminControllers/LanguageController.php)
+  * [resources/views/front_end/classic/layout/main.blade.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/resources/views/front_end/classic/layout/main.blade.php)
+  * [resources/views/front_end/classic/layout/header.blade.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/resources/views/front_end/classic/layout/header.blade.php)
+  * [resources/views/front_end/classic/pages/index.blade.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/resources/views/front_end/classic/pages/index.blade.php)
+  * [resources/views/front_end/classic/pages/partials/top_posts_slides.blade.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/resources/views/front_end/classic/pages/partials/top_posts_slides.blade.php)
+  * [resources/views/front_end/classic/pages/partials/search_result_posts.blade.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/resources/views/front_end/classic/pages/partials/search_result_posts.blade.php)
+* **Logic Changes**:
+  1. **New Flag Image Resizing & WebP Compression**: Modified the `store_language` method in `LanguageController.php` to call `FileService::resizeAndCompressUpload` with 150px max width and WebP output format. Ensures new flags are highly optimized.
+  2. **Deferred Modal Flag Loading**: Converted web language modal flag images inside `header.blade.php` to use the `lazy-img` class and a base64 spacer. Excluded modal flags from the page's global lazy load `IntersectionObserver` in `main.blade.php` to prevent premature load trigger on page initialize. Instead, added dedicated event listeners in `main.blade.php` to swap the images' sources on modal `beforeshow` events.
+  3. **Above-the-Fold LCP Prioritization**: Removed `loading="lazy"` from the first 4 slides of the Top Posts swiper in `index.blade.php`, and added `fetchpriority="high"` to the very first slide's image. This allows the browser to request the visible above-the-fold banner assets immediately, decreasing LCP resource delay.
+  4. **Swiper Pre-Initialization Anti-Shift CSS**: Injected a CSS override ruleset in `index.blade.php` to hide all slides except the first one in uninitialized Swiper containers (`.swiper:not(.swiper-initialized)`). This prevents carousels from stacking slides vertically and causing height collapse shifts when JavaScript executes.
+  5. **Explicit Dimensions for Channel Logos**: Added explicit `width="20" height="20"` attributes to all channel logo elements in `index.blade.php`, `top_posts_slides.blade.php`, and `search_result_posts.blade.php` to avoid browser dimension calculation changes on download.
+  6. **Third-Party Preconnection**: Added a `<link rel="preconnect" href="https://api.openweathermap.org">` tag in `main.blade.php`'s head to establish early handshakes for the weather data API.

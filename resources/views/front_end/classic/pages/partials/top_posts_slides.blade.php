@@ -50,7 +50,7 @@
                             </div>
                             @if ($top_post->channel != null)
                                 <a href="{{ url('channels/' . $top_post->channel->slug) }}" class="post-comments text-none hstack gap-narrow">
-                                    <img src="{{ url('storage/images/' . $top_post->channel->logo) }}" alt="channel logo" title="{{ $top_post->channel->name ?? '' }}" class="rounded-pill h-20px">
+                                    <img src="{{ url('storage/images/' . $top_post->channel->logo) }}" alt="channel logo" title="{{ $top_post->channel->name ?? '' }}" class="rounded-pill h-20px" width="20" height="20">
                                     <span title="{{ $top_post->channel->name ?? '' }}">{{ $top_post->channel->name }}</span>
                                 </a>
                             @endif

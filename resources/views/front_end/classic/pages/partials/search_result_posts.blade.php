@@ -78,7 +78,7 @@
                                             @if(!empty($post->channel_slug))
                                                 <div>
                                                     <div class="d-flex gap-1">
-                                                        <a href="{{ url('channels/' . $post->channel_slug) }}" title="{{ $post->channel_name }}"><img src="{{ url('storage/images/' . $post->channel_logo) }}" alt="Channel Logo" class="h-20px"></a>
+                                                        <a href="{{ url('channels/' . $post->channel_slug) }}" title="{{ $post->channel_name }}"><img src="{{ url('storage/images/' . $post->channel_logo) }}" alt="Channel Logo" class="h-20px" width="20" height="20"></a>
                                                         <a href="{{ url('channels/' . $post->channel_slug) }}" class="text-black dark:text-white text-none fw-bold" title="{{ $post->channel_name }}">{{ $post->channel_name }}</a>
                                                     </div>
                                                 </div>

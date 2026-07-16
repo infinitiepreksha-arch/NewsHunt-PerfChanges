@@ -16,7 +16,7 @@
             document.documentElement.classList.remove("preloader-active");
             // Programmatic lazy loading for YouTube iframes and lazy images
             window.lazyLoadElements = function() {
-                const lazyElements = document.querySelectorAll("iframe.lazy-iframe, img.lazy-img");
+                const lazyElements = document.querySelectorAll("iframe.lazy-iframe, img.lazy-img:not(#news-language-modal img, #web-language-modal img)");
                 if ("IntersectionObserver" in window) {
                     const observer = new IntersectionObserver((entries, obs) => {
                         entries.forEach(entry => {
@@ -47,6 +47,21 @@
                 }
             };
             window.lazyLoadElements();
+
+            // Load lazy images inside language modals only when they are opened
+            ['news-language-modal', 'web-language-modal'].forEach(function(modalId) {
+                const modal = document.getElementById(modalId);
+                if (modal) {
+                    modal.addEventListener('beforeshow', function() {
+                        modal.querySelectorAll('img.lazy-img').forEach(function(img) {
+                            if (img.getAttribute('data-src')) {
+                                img.src = img.getAttribute('data-src');
+                                img.classList.remove('lazy-img');
+                            }
+                        });
+                    });
+                }
+            });
 
             // Click handler to load YouTube iframes on-demand (Phase 5)
             document.addEventListener('click', function(e) {
@@ -119,6 +134,7 @@
     <meta charset="UTF-8">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://api.openweathermap.org">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{{ $title ?? '' }} | {{ $webTitle->value ?? '' }}</title>
     <link rel="icon" href="{{ $favicon ?? asset('assets/images/logo/favicon.png') }}" type="image/x-icon" />
