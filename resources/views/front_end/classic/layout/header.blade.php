@@ -21,8 +21,7 @@
             <div class="search-input-wrap mb-4">
                 <form
                     class="hstack gap-2 border rounded-xl px-3 py-0 bg-gray-25 dark:bg-gray-800 dark:border-gray-700 transition-all duration-200 focus-within:ring-2 focus-within:ring-primary focus-within:ring-opacity-50"
-                    method="GET" id="search-form-data" action="{{ route('posts.search') }}"
-                    onsubmit="return handleSearchSubmit(event)">
+                    method="GET" id="search-form-data" action="{{ route('posts.search') }}">
                     <span class="d-inline-flex justify-center items-center w-24px h-24px opacity-50 text-primary">
                         <i class="unicon-search icon-2"></i>
                     </span>

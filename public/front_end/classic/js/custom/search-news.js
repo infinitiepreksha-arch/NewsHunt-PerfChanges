@@ -114,7 +114,7 @@
 
         // ─── Helpers ──────────────────────────────────────────
         function getBaseUrl() {
-            var action = searchForm.getAttribute('action'); 
+            var action = searchForm.getAttribute('action');
             if (action) {
                 // If action is http://.../posts or /posts, remove the trailing /posts
                 return action.split('?')[0].replace(/\/posts\/?$/, '');
@@ -177,7 +177,7 @@
                     html += '</div>';
                 }
                 html += '<span class="fs-7 fw-medium text-truncate">' + escapeHtml(item.title) + '</span>';
-                
+
                 div.innerHTML = html;
                 div.addEventListener('click', function () {
                     searchInput.value = item.title;
@@ -196,20 +196,11 @@
             }
 
             query = query.trim();
-            currentSearchQuery = query;
-
-            // Save to recent
             addRecentSearch(query);
 
-            // Show results section, hide recent & suggestions
-            recentSection.style.display = 'none';
-            if (suggestionsSection) suggestionsSection.style.display = 'none';
-            resultsSection.style.display = 'block';
-            resultsTitle.textContent = 'Results for "' + query + '"';
-
-            // Reset to "All" tab and load data
-            setActiveTab('all');
-            fetchTabResults('all');
+            // Redirect to search results page
+            var baseUrl = getBaseUrl();
+            window.location.href = baseUrl + '/posts?search=' + encodeURIComponent(query);
         }
 
         function showRecentSearches() {
@@ -330,15 +321,14 @@
 
         // ─── Event Listeners ──────────────────────────────────
 
-        // Form submit — prevent redirect, do AJAX search in sidebar
+        // Form submit — redirect to the full-page search results
         searchForm.addEventListener('submit', function (e) {
-            e.preventDefault();
-            e.stopPropagation();
             var query = searchInput.value;
             if (query && query.trim()) {
-                performSearch(query);
+                addRecentSearch(query.trim());
+            } else {
+                e.preventDefault();
             }
-            return false;
         });
 
         // Clear All button
@@ -434,23 +424,221 @@
         init();
     }
 
-    // Also handle filterForm on search-result page (if exists)
+    // Handle filterForm and searchFormMobile AJAX search on search-result page
     document.addEventListener('DOMContentLoaded', function () {
         var filterForm = document.getElementById('filterForm');
+        var searchFormMobile = document.getElementById('searchFormMobile');
+
+        if (!filterForm && !searchFormMobile) return;
+
+        function syncForms(sourceForm, targetForm) {
+            if (!sourceForm || !targetForm) return;
+
+            // Sync text and select inputs
+            ['search', 'filter'].forEach(function (name) {
+                var sourceEl = sourceForm.querySelector('[name="' + name + '"]');
+                var targetEl = targetForm.querySelector('[name="' + name + '"]');
+                if (sourceEl && targetEl) {
+                    targetEl.value = sourceEl.value;
+                }
+            });
+
+            // Sync checkboxes
+            ['post_type[]', 'channel[]', 'topic[]'].forEach(function (name) {
+                var sourceChecked = Array.from(sourceForm.querySelectorAll('input[name="' + name + '"]:checked')).map(function (el) { return el.value; });
+                var targetInputs = targetForm.querySelectorAll('input[name="' + name + '"]');
+                targetInputs.forEach(function (input) {
+                    input.checked = sourceChecked.indexOf(input.value) !== -1;
+                });
+            });
+
+            // Sync channel-all-checkbox
+            var sourceAll = sourceForm.querySelector('.channel-all-checkbox');
+            var targetAll = targetForm.querySelector('.channel-all-checkbox');
+            if (sourceAll && targetAll) {
+                targetAll.checked = sourceAll.checked;
+            }
+        }
+
+        function fetchSearchResults(url) {
+            var activeForm = filterForm;
+            var isMobile = window.innerWidth < 992;
+            if (isMobile && searchFormMobile) {
+                activeForm = searchFormMobile;
+            }
+
+            if (!url) {
+                var action = activeForm ? activeForm.getAttribute('action') : window.location.pathname;
+
+                // Construct query parameters
+                var formData = new FormData(activeForm);
+                var params = new URLSearchParams();
+                for (var pair of formData.entries()) {
+                    // Handling array names correctly
+                    params.append(pair[0], pair[1]);
+                }
+                url = action + '?' + params.toString();
+            }
+
+            var contentArea = document.getElementById('content-area');
+            if (contentArea) {
+                contentArea.style.opacity = '0.5';
+            }
+
+            fetch(url, {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                }
+            })
+                .then(function (response) { return response.json(); })
+                .then(function (data) {
+                    if (contentArea) {
+                        contentArea.style.opacity = '1';
+                        if (data && data.html) {
+                            contentArea.innerHTML = data.html;
+
+                            // Re-initialize lazy load elements
+                            if (typeof window.lazyLoadElements === 'function') {
+                                window.lazyLoadElements();
+                            }
+                        }
+                    }
+
+                    // Update URL
+                    window.history.pushState(null, '', url);
+
+                    // Hide offcanvas drawer on mobile
+                    if (isMobile && typeof UIkit !== 'undefined') {
+                        var offcanvas = UIkit.offcanvas('#uc-filter-panel');
+                        if (offcanvas) {
+                            offcanvas.hide();
+                        }
+                    }
+                })
+                .catch(function (err) {
+                    if (contentArea) {
+                        contentArea.style.opacity = '1';
+                    }
+                    console.error('AJAX Search error:', err);
+                });
+        }
+
+        // Form Submission Listeners
         if (filterForm) {
             filterForm.addEventListener('submit', function (e) {
                 e.preventDefault();
-                var checkboxes = document.querySelectorAll('input[name="channel[]"]:checked');
-                var selectedChannels = Array.from(checkboxes).map(function (cb) { return cb.value; });
-                var channelValue = selectedChannels.join('|');
-                var hiddenInput = document.createElement('input');
-                hiddenInput.type = 'hidden';
-                hiddenInput.value = channelValue;
-                var existingHidden = document.querySelector('input[name="selected_channels"]');
-                if (existingHidden) existingHidden.remove();
-                this.appendChild(hiddenInput);
-                this.submit();
+                fetchSearchResults();
+            });
+
+            // Trigger fetch on input change
+            filterForm.addEventListener('change', function (e) {
+                if (e.target.name === 'search') return; // Don't trigger on keypress search until typing pauses
+
+                // Handle All Channel checkbox logic
+                if (e.target.classList.contains('channel-all-checkbox')) {
+                    if (e.target.checked) {
+                        filterForm.querySelectorAll('input[name="channel[]"]').forEach(function (cb) {
+                            cb.checked = false;
+                        });
+                    } else {
+                        e.target.checked = true;
+                    }
+                } else if (e.target.name === 'channel[]') {
+                    var allCheckbox = filterForm.querySelector('.channel-all-checkbox');
+                    if (allCheckbox) {
+                        var checkedChannels = filterForm.querySelectorAll('input[name="channel[]"]:checked');
+                        allCheckbox.checked = (checkedChannels.length === 0);
+                    }
+                }
+
+                syncForms(filterForm, searchFormMobile);
+                fetchSearchResults();
             });
         }
+
+        if (searchFormMobile) {
+            searchFormMobile.addEventListener('submit', function (e) {
+                e.preventDefault();
+                fetchSearchResults();
+            });
+
+            searchFormMobile.addEventListener('change', function (e) {
+                if (e.target.name === 'search') return;
+
+                // Handle All Channel checkbox logic
+                if (e.target.classList.contains('channel-all-checkbox')) {
+                    if (e.target.checked) {
+                        searchFormMobile.querySelectorAll('input[name="channel[]"]').forEach(function (cb) {
+                            cb.checked = false;
+                        });
+                    } else {
+                        e.target.checked = true;
+                    }
+                } else if (e.target.name === 'channel[]') {
+                    var allCheckbox = searchFormMobile.querySelector('.channel-all-checkbox');
+                    if (allCheckbox) {
+                        var checkedChannels = searchFormMobile.querySelectorAll('input[name="channel[]"]:checked');
+                        allCheckbox.checked = (checkedChannels.length === 0);
+                    }
+                }
+
+                syncForms(searchFormMobile, filterForm);
+                fetchSearchResults();
+            });
+        }
+
+        // Debounce search inputs
+        var searchDebounce;
+        document.addEventListener('input', function (e) {
+            if (e.target && e.target.name === 'search' && (e.target.closest('#filterForm') || e.target.closest('#searchFormMobile'))) {
+                var targetInput = e.target;
+                clearTimeout(searchDebounce);
+                searchDebounce = setTimeout(function () {
+                    if (targetInput.closest('#filterForm')) {
+                        syncForms(filterForm, searchFormMobile);
+                    } else {
+                        syncForms(searchFormMobile, filterForm);
+                    }
+                    fetchSearchResults();
+                }, 500);
+            }
+        });
+
+        // Intercept Pagination Clicks
+        document.addEventListener('click', function (e) {
+            var paginationLink = e.target.closest('#content-area .uc-pagination a');
+            if (paginationLink) {
+                e.preventDefault();
+                var url = paginationLink.getAttribute('href');
+                if (url) {
+                    fetchSearchResults(url);
+                    // Scroll to top of results smoothly
+                    var contentArea = document.getElementById('content-area');
+                    if (contentArea) {
+                        contentArea.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                }
+            }
+
+            var clearBtn = e.target.closest('.clear-filters-btn');
+            if (clearBtn) {
+                e.preventDefault();
+                [filterForm, searchFormMobile].forEach(function (form) {
+                    if (!form) return;
+                    form.querySelectorAll('input[type="checkbox"]').forEach(function (cb) {
+                        cb.checked = false;
+                    });
+                    form.querySelectorAll('select[name="filter"]').forEach(function (sel) {
+                        sel.value = '';
+                    });
+                    // Re-check All channel checkbox
+                    form.querySelectorAll('.channel-all-checkbox').forEach(function (cb) {
+                        cb.checked = true;
+                    });
+                });
+                fetchSearchResults();
+            }
+        });
     });
 })();

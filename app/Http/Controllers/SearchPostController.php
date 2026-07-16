@@ -3,10 +3,12 @@ namespace App\Http\Controllers;
 
 use App\Models\Channel;
 use App\Models\ChannelSubscriber;
+use App\Models\ENewspaper;
 use App\Models\NewsLanguage;
 use App\Models\NewsLanguageSubscriber;
 use App\Models\Post;
 use App\Models\Setting;
+use App\Models\Story;
 use App\Models\Topic;
 use App\Models\TopicFollower;
 use Carbon\Carbon;
@@ -34,115 +36,282 @@ class SearchPostController extends Controller
             }
         }
 
-        $searchQuery = $request->input('search');
-        $channels    = $request->input('channel');
-        $topics      = $request->input('topic');
-        $filter      = $request->input('filter');
+        $searchQuery   = $request->input('search');
+        $channels      = $request->input('channel', []);
+        $topics        = $request->input('topic', []);
+        $selectedTypes = $request->input('post_type', []);
+        $filter        = $request->input('filter');
 
         $channel_ids = ChannelSubscriber::where('user_id', Auth::user()->id ?? 0)->pluck('channel_id')->toArray();
         $topic_ids   = TopicFollower::where('user_id', Auth::user()->id ?? 0)->pluck('topic_id')->toArray();
 
-        $getPosts = Post::select(
-            'posts.id',
-            'posts.slug',
-            'posts.image',
-            'posts.comment',
-            'channels.name as channel_name',
-            'channels.logo as channel_logo',
-            'channels.slug as channel_slug',
-            'topics.name as topic_name',
-            'topics.slug as topic_slug',
-            'posts.title',
-            'posts.favorite',
-            'posts.description',
-            'posts.status',
-            'posts.publish_date',
-            'posts.view_count',
-            'posts.type',
-            'posts.video_thumb',
-            'posts.pubdate',
-            'posts.reaction',
-        )
+        $builders = [];
+
+        // 1. Post Builder (Articles, Videos, YouTube, Audios)
+        $includePosts = empty($selectedTypes) || array_intersect(['post', 'video', 'youtube', 'audio'], $selectedTypes);
+        if ($includePosts) {
+            $postBuilder = Post::selectRaw("
+                posts.id as id,
+                posts.title as title,
+                posts.slug as slug,
+                posts.image as image,
+                posts.type as type,
+                posts.publish_date as publish_date,
+                posts.view_count as view_count,
+                posts.reaction as reaction,
+                posts.comment as comment,
+                channels.name as channel_name,
+                channels.slug as channel_slug,
+                channels.logo as channel_logo,
+                topics.name as topic_name,
+                topics.slug as topic_slug
+            ")
             ->where('posts.status', 'active')
-            ->join('channels', function ($join) {
+            ->leftJoin('channels', function ($join) {
                 $join->on('posts.channel_id', '=', 'channels.id')
                     ->where('channels.status', 'active');
             })
-            ->leftjoin('topics', function ($join) {
+            ->leftJoin('topics', function ($join) {
                 $join->on('posts.topic_id', '=', 'topics.id')
                     ->where('topics.status', 'active');
             });
-        if ($subscribedLanguageIds->isNotEmpty()) {
-            $getPosts->whereIn('posts.news_language_id', $subscribedLanguageIds);
+
+            if ($subscribedLanguageIds->isNotEmpty()) {
+                $postBuilder->whereIn('posts.news_language_id', $subscribedLanguageIds);
+            }
+
+            if ($searchQuery) {
+                $postBuilder->where(function ($subQuery) use ($searchQuery) {
+                    $subQuery->where('posts.title', 'LIKE', "%$searchQuery%")
+                        ->orWhere('posts.slug', 'LIKE', "%$searchQuery%")
+                        ->orWhere('channels.name', 'LIKE', "%$searchQuery%")
+                        ->orWhere('topics.name', 'LIKE', "%$searchQuery%");
+                });
+            }
+
+            if (! empty($channels)) {
+                $postBuilder->whereIn('channels.slug', $channels);
+            }
+
+            if (! empty($topics)) {
+                $postBuilder->whereIn('topics.slug', $topics);
+            }
+
+            if (! empty($selectedTypes)) {
+                $postTypes = [];
+                if (in_array('post', $selectedTypes)) $postTypes[] = 'post';
+                if (in_array('video', $selectedTypes)) $postTypes[] = 'video';
+                if (in_array('youtube', $selectedTypes)) $postTypes[] = 'youtube';
+                if (in_array('audio', $selectedTypes)) $postTypes[] = 'audio';
+                $postBuilder->whereIn('posts.type', $postTypes);
+            }
+
+            $builders[] = $postBuilder;
         }
-        if ($searchQuery) {
-            $getPosts->where(function ($subQuery) use ($searchQuery) {
-                $subQuery->where('posts.slug', 'LIKE', "%$searchQuery%")
-                    ->orWhere('posts.title', 'LIKE', "%$searchQuery%")
-                    ->orWhere('channels.slug', 'LIKE', "%$searchQuery%")
-                    ->orWhere('channels.name', 'LIKE', "%$searchQuery%")
-                    ->orWhere('topics.slug', 'LIKE', "%$searchQuery%")
-                    ->orWhere('topics.name', 'LIKE', "%$searchQuery%");
+
+        // 2. Story Builder (Web Stories)
+        $includeStories = empty($selectedTypes) || in_array('story', $selectedTypes);
+        if ($includeStories && empty($channels)) { // Stories don't have channels
+            $storyBuilder = Topic::selectRaw("
+                stories.id as id,
+                stories.title as title,
+                stories.slug as slug,
+                NULL as image,
+                'story' as type,
+                stories.created_at as publish_date,
+                stories.story_count as view_count,
+                0 as reaction,
+                0 as comment,
+                NULL as channel_name,
+                NULL as channel_slug,
+                NULL as channel_logo,
+                topics.name as topic_name,
+                topics.slug as topic_slug
+            ")
+            ->join('stories', 'stories.topic_id', '=', 'topics.id')
+            ->whereExists(function ($q) {
+                $q->select(\Illuminate\Support\Facades\DB::raw(1))
+                  ->from('story_slides')
+                  ->whereColumn('story_slides.story_id', 'stories.id');
+            });
+
+            if ($subscribedLanguageIds->isNotEmpty()) {
+                $storyBuilder->whereIn('stories.news_language_id', $subscribedLanguageIds);
+            }
+
+            if ($searchQuery) {
+                $storyBuilder->where(function ($subQuery) use ($searchQuery) {
+                    $subQuery->where('stories.title', 'LIKE', "%$searchQuery%")
+                        ->orWhere('stories.slug', 'LIKE', "%$searchQuery%")
+                        ->orWhere('topics.name', 'LIKE', "%$searchQuery%");
+                });
+            }
+
+            if (! empty($topics)) {
+                $storyBuilder->whereIn('topics.slug', $topics);
+            }
+
+            $builders[] = $storyBuilder;
+        }
+
+        // 3. ENewspaper Builder (Newspapers, Magazines)
+        $includeENewspapers = empty($selectedTypes) || array_intersect(['paper', 'magazine'], $selectedTypes);
+        if ($includeENewspapers) {
+            $enewspaperBuilder = ENewspaper::selectRaw("
+                e_newspapers.id as id,
+                channels.name as title,
+                NULL as slug,
+                e_newspapers.thumbnail as image,
+                e_newspapers.type as type,
+                e_newspapers.date as publish_date,
+                0 as view_count,
+                0 as reaction,
+                0 as comment,
+                channels.name as channel_name,
+                channels.slug as channel_slug,
+                channels.logo as channel_logo,
+                topics.name as topic_name,
+                topics.slug as topic_slug
+            ")
+            ->leftJoin('channels', function ($join) {
+                $join->on('e_newspapers.channel_id', '=', 'channels.id')
+                    ->where('channels.status', 'active');
             })
-            ->groupBy('posts.id');
+            ->leftJoin('topics', function ($join) {
+                $join->on('e_newspapers.topic_id', '=', 'topics.id')
+                    ->where('topics.status', 'active');
+            });
+
+            if ($subscribedLanguageIds->isNotEmpty()) {
+                $enewspaperBuilder->whereIn('e_newspapers.news_language_id', $subscribedLanguageIds);
+            }
+
+            if ($searchQuery) {
+                $enewspaperBuilder->where(function ($subQuery) use ($searchQuery) {
+                    $subQuery->where('channels.name', 'LIKE', "%$searchQuery%")
+                        ->orWhere('topics.name', 'LIKE', "%$searchQuery%");
+                });
+            }
+
+            if (! empty($channels)) {
+                $enewspaperBuilder->whereIn('channels.slug', $channels);
+            }
+
+            if (! empty($topics)) {
+                $enewspaperBuilder->whereIn('topics.slug', $topics);
+            }
+
+            if (! empty($selectedTypes)) {
+                $enewspaperTypes = [];
+                if (in_array('paper', $selectedTypes)) $enewspaperTypes[] = 'paper';
+                if (in_array('magazine', $selectedTypes)) $enewspaperTypes[] = 'magazine';
+                $enewspaperBuilder->whereIn('e_newspapers.type', $enewspaperTypes);
+            }
+
+            $builders[] = $enewspaperBuilder;
         }
-        if (! empty($channels)) {
-            $getPosts->whereIn('channels.slug', $channels);
-        }
-        if (! empty($topics)) {
-            $getPosts->whereIn('topics.slug', $topics);
-        }
 
-        if ($filter == "most-read") {
-            $getPosts->where('publish_date', '>', now()->subDays(7)->endOfDay())->orderBy('posts.view_count', 'DESC');
-        } elseif ($filter == "most-liked") {
-
-            $getPosts->orderBy('posts.favorite', 'DESC');
-        } elseif ($filter == "most-recent") {
-
-            $getPosts->orderBy('posts.publish_date', 'DESC');
-        } elseif ($filter == "channels-followed") {
-
-            $getPosts->whereIn('posts.channel_id', $channel_ids);
-        } elseif ($filter == "topics-followed") {
-
-            $getPosts->whereIn('posts.topic_id', $topic_ids);
+        if (empty($builders)) {
+            $getPosts = new \Illuminate\Pagination\LengthAwarePaginator([], 0, 15);
         } else {
-            $getPosts->orderBy('posts.publish_date', 'DESC');
+            $firstBuilder = array_shift($builders);
+            foreach ($builders as $b) {
+                $firstBuilder->unionAll($b);
+            }
+
+            $sortField = 'publish_date';
+            $sortOrder = 'DESC';
+
+            if ($filter == "most-read") {
+                $sortField = 'view_count';
+            } elseif ($filter == "most-liked") {
+                $sortField = 'reaction';
+            } elseif ($filter == "most-recent") {
+                $sortField = 'publish_date';
+            } elseif ($filter == "oldest") {
+                $sortField = 'publish_date';
+                $sortOrder = 'ASC';
+            } elseif ($filter == "most-commented") {
+                $sortField = 'comment';
+            }
+
+            $getPosts = \Illuminate\Support\Facades\DB::table(\Illuminate\Support\Facades\DB::raw("({$firstBuilder->toSql()}) as unified"))
+                ->mergeBindings($firstBuilder->getQuery())
+                ->orderBy($sortField, $sortOrder)
+                ->paginate(15)
+                ->withQueryString();
         }
 
-        $getPosts     = $getPosts->paginate(15)->withQueryString();
         $channels     = Channel::select('id', 'name', 'slug')->where('status', 'active')->get();
         $topics       = Topic::select('id', 'name', 'slug')->where('status', 'active')->get();
         $post_label   = Setting::get()->where('name', 'news_label_place_holder')->first();
         $defaultImage = Setting::get()->where('name', 'default_image')->first();
+        $defaultImageUrl = $defaultImage->value ?? asset('front_end/classic/images/default/post-placeholder.jpg');
+
+        $followedChannels = collect();
+        $followedTopics = collect();
+        if (Auth::check()) {
+            $followedChannelIds = ChannelSubscriber::where('user_id', Auth::id())->pluck('channel_id')->toArray();
+            $followedTopicIds   = TopicFollower::where('user_id', Auth::id())->pluck('topic_id')->toArray();
+
+            $followedChannels = Channel::select('id', 'name', 'slug')
+                ->where('status', 'active')
+                ->whereIn('id', $followedChannelIds)
+                ->get();
+
+            $followedTopics = Topic::select('id', 'name', 'slug')
+                ->where('status', 'active')
+                ->whereIn('id', $followedTopicIds)
+                ->get();
+        }
 
         foreach ($getPosts as $post) {
-
-            $post->image = $post->image ?? url($defaultImage->value ?? 'public/front_end/classic/images/default/post-placeholder.jpg');
-            if ($post->image === url('storage')) {
-                $post->image = $defaultImage->value;
-                // Set default values for video fields
-                $post->video_thumb = $post->video_thumb ?? $defaultImage->value;
-                $post->video       = $post->video ?? $defaultImage->value;
+            // Resolve images and URLs based on type
+            if ($post->type === 'story') {
+                $firstSlide = \Illuminate\Support\Facades\DB::table('story_slides')
+                    ->where('story_id', $post->id)
+                    ->orderBy('order', 'asc')
+                    ->first();
+                $post->image = $firstSlide && $firstSlide->image ? asset('storage/' . $firstSlide->image) : $defaultImageUrl;
+                $post->url = url('webstories/' . ($post->topic_slug ?? 'general') . '/' . $post->slug);
+            } elseif ($post->type === 'paper') {
+                $post->image = $post->image ? asset('storage/' . $post->image) : $defaultImageUrl;
+                $post->url = route('e-newspaper.pdf', $post->id);
+            } elseif ($post->type === 'magazine') {
+                $post->image = $post->image ? asset('storage/' . $post->image) : $defaultImageUrl;
+                $post->url = route('e-magazine.pdf', $post->id);
             } else {
-                $post->image = $post->image;
-                // Set default values for video fields
-                $post->video_thumb = $post->video_thumb ?? $defaultImage->value;
-                $post->video       = $post->video ?? $defaultImage->value;
+                $post->url = url('posts/' . $post->slug);
+                $post->image = $post->image ?? $defaultImageUrl;
+                if ($post->image === url('storage')) {
+                    $post->image = $defaultImageUrl;
+                }
+                if ($post->type === 'video' || $post->type === 'youtube') {
+                    $post->video_thumb = $post->video_thumb ?? $post->image;
+                }
             }
+
             if ($post->publish_date) {
-                $post->publish_date_news = Carbon::parse($post->pubdate)->format(self::TIME_FORMATE);
+                $post->publish_date_news = Carbon::parse($post->publish_date)->format(self::TIME_FORMATE);
                 $post->publish_date      = Carbon::parse($post->publish_date)->diffForHumans();
+                $post->pubdate           = $post->publish_date;
             } else {
-                $post->pubdate = Carbon::parse($post->pubdate)->diffForHumans();
+                $post->pubdate = '';
+                $post->publish_date_news = '';
+                $post->publish_date = '';
             }
         }
 
         $title = $searchQuery ?? (isset($post_label->value) ? $post_label->value : __('frontend-labels.posts.all_posts'));
         $theme = getTheme();
 
-        return view('front_end/' . $theme . '/pages/search-result', compact('getPosts', 'title', 'searchQuery', 'post_label', 'channels', 'topics', 'theme'));
+        if ($request->ajax()) {
+            return response()->json([
+                'html' => view('front_end/' . $theme . '/pages/partials/search_result_posts', compact('getPosts', 'theme', 'searchQuery', 'post_label'))->render()
+            ]);
+        }
+
+        return view('front_end/' . $theme . '/pages/search-result', compact('getPosts', 'title', 'searchQuery', 'post_label', 'channels', 'topics', 'theme', 'followedChannels', 'followedTopics'));
     }
 
     public function autocomplete(Request $request)
