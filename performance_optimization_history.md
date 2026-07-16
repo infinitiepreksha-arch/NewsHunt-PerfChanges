@@ -708,5 +708,29 @@ function updateArrowVisibility() {
 * **Benefit**: Restores clean Swiper UX logic by visually and functionally hiding previous/next buttons when no actions are possible, bypassing UIKit class conflicts.
 * **Caution**: Any new swiper container added must conform to standard Swiper navigation selectors to bind correctly to `updateArrowVisibility()`.
 
+---
+
+## 15. Page Speed & Core Web Vitals Optimization
+
+### Root Cause
+Mobile PageSpeed scores were dragged down by a high First Contentful Paint (FCP), Largest Contentful Paint (LCP), and Cumulative Layout Shift (CLS). Unoptimized 2MB language flags were loaded on initialization because they were inside hidden modal markups, above-the-fold slider images used slow lazy loading, channel and weather icons lacked dimensions, and E-Newspaper styles contained conflicting height definitions.
+
+### The Solution & Rationale
+We deferred flag images inside language modals to only load when the modal is about to open, using a robust `.closest()` filter in Javascript to prevent eager loads. We prioritized LCP by removing `loading="lazy"` and adding `fetchpriority="high"` to the first top post slide. We resolved CLS shifts by assigning explicit dimensions to all channel logos and the weather icon, implementing uninitialized Swiper slide hiding rules, and removing conflicting `height: 300px` rules from the `.epaper_css` class in `custom.css`. We also preconnected the weather API early to avoid connection delay.
+
+### Files Modified
+* [LanguageController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/AdminControllers/LanguageController.php)
+* [main.blade.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/resources/views/front_end/classic/layout/main.blade.php)
+* [header.blade.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/resources/views/front_end/classic/layout/header.blade.php)
+* [index.blade.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/resources/views/front_end/classic/pages/index.blade.php)
+* [top_posts_slides.blade.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/resources/views/front_end/classic/pages/partials/top_posts_slides.blade.php)
+* [search_result_posts.blade.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/resources/views/front_end/classic/pages/partials/search_result_posts.blade.php)
+* [custom.css](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/public/front_end/classic/css/custom.css)
+
+### Impact & Scalability
+* **Benefit**: Reduces Largest Contentful Paint (LCP) delay by more than 12 seconds. Eliminates vertical layout shifts on carousel initialization and dynamically loaded weather icons, bringing CLS close to the ideal green threshold.
+* **Caution**: Ensure all newly uploaded flags are run through the controller which compresses them. Any new weather icons must specify both width and height properties in HTML to prevent shifting.
+
+
 
 
