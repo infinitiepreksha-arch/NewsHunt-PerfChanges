@@ -372,7 +372,7 @@
                                                     <div class="row text-center mt-2">
                                                         <div>
                                                             <img src="https://mdbcdn.b-cdn.net/img/Photos/new-templates/bootstrap-weather/ilu1.webp"
-                                                                id="weather-icon" width="100px" alt="">
+                                                                id="weather-icon" width="100" height="100" style="width: 100px; height: 100px;" alt="weather icon">
                                                         </div>
                                                         <div class="col-4">
                                                             <i

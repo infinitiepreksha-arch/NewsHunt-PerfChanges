@@ -16,7 +16,7 @@
             document.documentElement.classList.remove("preloader-active");
             // Programmatic lazy loading for YouTube iframes and lazy images
             window.lazyLoadElements = function() {
-                const lazyElements = document.querySelectorAll("iframe.lazy-iframe, img.lazy-img:not(#news-language-modal img, #web-language-modal img)");
+                const lazyElements = document.querySelectorAll("iframe.lazy-iframe, img.lazy-img");
                 if ("IntersectionObserver" in window) {
                     const observer = new IntersectionObserver((entries, obs) => {
                         entries.forEach(entry => {
@@ -37,9 +37,17 @@
                             }
                         });
                     }, { rootMargin: "0px 0px 400px 0px" });
-                    lazyElements.forEach(el => observer.observe(el));
+                    lazyElements.forEach(el => {
+                        if (el.closest('#news-language-modal') || el.closest('#web-language-modal')) {
+                            return;
+                        }
+                        observer.observe(el);
+                    });
                 } else {
                     lazyElements.forEach(el => {
+                        if (el.closest('#news-language-modal') || el.closest('#web-language-modal')) {
+                            return;
+                        }
                         if (el.getAttribute("data-src")) {
                             el.src = el.getAttribute("data-src");
                         }
