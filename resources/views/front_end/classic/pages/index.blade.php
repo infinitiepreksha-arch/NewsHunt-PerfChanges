@@ -2,10 +2,16 @@
 @section('body')
 
     <style>
-        .swiper-nav.disabled, .swiper-button-disabled, .nav-next.disabled, .nav-prev.disabled {
+        /* Keeps next arrow active for AJAX fetching when Swiper/UIKit marks it disabled */
+        .nav-next.disabled, .swiper-button-next.swiper-button-disabled {
             pointer-events: auto !important;
             cursor: pointer !important;
             opacity: 1 !important;
+        }
+
+        /* Custom class to hide navigation arrows when required (prevents UIKit/Swiper interference) */
+        .swiper-nav-hidden {
+            display: none !important;
         }
     </style>
     <div id="wrapper" class="wrap overflow-hidden-x">

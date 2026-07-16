@@ -1103,6 +1103,7 @@ $(document).ready(function () {
 
         var swiperInstance = swiperEl.swiper;
         var nextButton = $(options.nextButtonSelector);
+        var prevButton = $(options.prevButtonSelector);
         var hasMore = true;
         var isLoading = false;
 
@@ -1116,6 +1117,25 @@ $(document).ready(function () {
         }
 
         console.log("Swiper instance successfully connected for", options.swiperId);
+
+        function updateArrowVisibility() {
+            // 1. Hide previous arrow if at slide 0
+            if (swiperInstance.activeIndex === 0) {
+                prevButton.addClass('swiper-nav-hidden');
+            } else {
+                prevButton.removeClass('swiper-nav-hidden');
+            }
+
+            // 2. Hide next arrow if at the very end AND no more content is on the server
+            if (swiperInstance.isEnd && !hasMore) {
+                nextButton.addClass('swiper-nav-hidden');
+            } else {
+                nextButton.removeClass('swiper-nav-hidden');
+            }
+        }
+
+        // Initialize visibility
+        updateArrowVisibility();
 
         function fetchNextChunk() {
             if (!hasMore || isLoading) {
@@ -1166,15 +1186,13 @@ $(document).ready(function () {
                     }
                     isLoading = false;
                     $(swiperEl).removeClass('loading-slides');
-                    if (!hasMore) {
-                        console.log("No more slides available for", options.swiperId);
-                        nextButton.addClass('disabled');
-                    }
+                    updateArrowVisibility();
                 },
                 error: function (xhr, status, error) {
                     console.error("Error fetching slides for " + options.swiperId + ":", error);
                     isLoading = false;
                     $(swiperEl).removeClass('loading-slides');
+                    updateArrowVisibility();
                 }
             });
         }
@@ -1182,6 +1200,7 @@ $(document).ready(function () {
         // Fetch when reaching near the end during swipes/drags
         swiperInstance.on('slideChange', function () {
             fetchNextChunk();
+            updateArrowVisibility();
         });
 
         // Fetch when clicking next near the end of loaded slides
@@ -1194,24 +1213,28 @@ $(document).ready(function () {
     window.initLazySliderLoad({
         swiperId: '#most-read-swiper',
         nextButtonSelector: '#most-read-swiper ~ * .nav-next, #most-read-swiper ~ .nav-next',
+        prevButtonSelector: '#most-read-swiper ~ * .nav-prev, #most-read-swiper ~ .nav-prev',
         ajaxUrl: '/most-read-remaining'
     });
 
     window.initLazySliderLoad({
         swiperId: '#web-stories-swiper',
         nextButtonSelector: '#web-stories-swiper .swiper-next, #web-stories-swiper ~ * .swiper-next',
+        prevButtonSelector: '#web-stories-swiper .swiper-prev, #web-stories-swiper ~ * .swiper-prev',
         ajaxUrl: '/web-stories-remaining'
     });
 
     window.initLazySliderLoad({
         swiperId: '#top-posts-swiper',
         nextButtonSelector: '#top-posts-swiper ~ * .nav-next, #top-posts-swiper ~ .nav-next',
+        prevButtonSelector: '#top-posts-swiper ~ * .nav-prev, #top-posts-swiper ~ .nav-prev',
         ajaxUrl: '/top-posts-remaining'
     });
 
     window.initLazySliderLoad({
         swiperId: '#followed-channels-swiper',
         nextButtonSelector: '#followed-channels-swiper ~ * .nav-next, #followed-channels-swiper ~ .nav-next',
+        prevButtonSelector: '#followed-channels-swiper ~ * .nav-prev, #followed-channels-swiper ~ .nav-prev',
         ajaxUrl: '/followed-channels-remaining'
     });
 });

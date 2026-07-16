@@ -657,3 +657,56 @@ function syncForms(sourceForm, targetForm) {
 * **Benefit**: Users get instant, animated search updates without full-page reloads. Viewports stay perfectly synchronized on both mobile and desktop.
 * **Caution**: Any new filter criteria or sorting properties added in the future must be registered in the `syncForms` array parameters to ensure synchronization.
 
+---
+
+## 14. Homepage Swiper Navigation Arrow States Fix
+
+### Root Cause
+1. **Disabled Navigation Arrow Active State**: The global CSS styles override forced all disabled Swiper navigation elements (`.swiper-nav.disabled`, `.swiper-button-disabled`, etc.) to stay active (`pointer-events: auto !important; opacity: 1 !important;`). While this kept next (`>`) buttons active near page boundaries to fetch new slides via AJAX, it also kept the previous (`<`) button visible and clickable on initial load (slide 0).
+2. **UIKit/Swiper Class Interference on Web Stories**: The Web Stories slider has the attribute `disable-class: d-none`. This caused the UIKit/Swiper engine to dynamically remove `d-none` from the previous arrow during initial load, overriding any manual `.addClass('d-none')` call.
+
+### The Solution & Rationale
+1. **Narrowed Selector Scope**: Restructured CSS overrides in [index.blade.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/resources/views/front_end/classic/pages/index.blade.php) to target only next navigation buttons (`.nav-next.disabled`, `.swiper-button-next.swiper-button-disabled`).
+2. **Custom Hidden Class**: Registered a custom `.swiper-nav-hidden` class styled as `display: none !important;`. Because UIKit/Swiper is unaware of this custom class, it never removes it.
+3. **Dynamic Visibility Helper**: Updated [custom-jquery.js](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/public/front_end/classic/js/custom/custom-jquery.js) to toggle `.swiper-nav-hidden` on:
+   * Previous button: Hidden when `activeIndex === 0`.
+   * Next button: Hidden when `swiperInstance.isEnd` is true and `hasMore` is false.
+
+### Files Modified
+* [index.blade.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/resources/views/front_end/classic/pages/index.blade.php)
+* [custom-jquery.js](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/public/front_end/classic/js/custom/custom-jquery.js)
+
+### Code Comparison
+```css
+/* [Style Refactor - index.blade.php] */
+.nav-next.disabled, .swiper-button-next.swiper-button-disabled {
+    pointer-events: auto !important;
+    cursor: pointer !important;
+    opacity: 1 !important;
+}
+.swiper-nav-hidden {
+    display: none !important;
+}
+```
+```javascript
+/* [Dynamic Visibility Toggle - custom-jquery.js] */
+function updateArrowVisibility() {
+    if (swiperInstance.activeIndex === 0) {
+        prevButton.addClass('swiper-nav-hidden');
+    } else {
+        prevButton.removeClass('swiper-nav-hidden');
+    }
+    if (swiperInstance.isEnd && !hasMore) {
+        nextButton.addClass('swiper-nav-hidden');
+    } else {
+        nextButton.removeClass('swiper-nav-hidden');
+    }
+}
+```
+
+### Impact & Scalability
+* **Benefit**: Restores clean Swiper UX logic by visually and functionally hiding previous/next buttons when no actions are possible, bypassing UIKit class conflicts.
+* **Caution**: Any new swiper container added must conform to standard Swiper navigation selectors to bind correctly to `updateArrowVisibility()`.
+
+
+
