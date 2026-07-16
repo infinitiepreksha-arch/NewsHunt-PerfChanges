@@ -834,7 +834,6 @@ body {
 }
 
 .epaper_css {
-  height: 300px;
   text-align: center;
   object-fit: cover;
 }
