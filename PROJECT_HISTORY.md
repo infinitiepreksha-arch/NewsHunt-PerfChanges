@@ -735,3 +735,16 @@ Deferred AJAX loading for Navbar Category Dropdowns and homepage sliders (Most R
       - Cached `Reaction::all()` definitions forever inside `PostDetailController.php`, saving 1 SQL statement.
       - Cached subscriber news language IDs in Symfony request attributes shared between `PostDetailController.php` and `AppServiceProvider.php`, eliminating duplicate DB queries.
       - Removed the redundant categories/topics list query from `PostDetailController.php`, inheriting the globally shared View Composer `$topics` variable instead.
+
+### [2026-07-17] Agent Guidelines Documentation Setup
+
+* **Feature**: Set up developer agent guidelines and coding patterns mapping for the NewsHunt Laravel project.
+* **Files Created/Modified**:
+  * [.agents/agent_instruction.md](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/.agents/agent_instruction.md) (Created and expanded to cover end-to-end codebase systems, tech stack specifications, frontend assets, and data flows)
+* **Logic Changes**:
+  * Codified the architectural standards, caching strategies, Eloquent optimization guidelines, frontend Core Web Vitals practices, and WebP compression guidelines into a unified instructions markdown file for AI coding subagents working on this workspace to prevent breaking existing systems.
+  * Expanded the guidelines to include database model definitions, subscription limit and increment validations, homepage feed consolidation and shuffling, payment gateway checkout routines, RSS ingestion automation, web stories cookie-based tracking, and custom advertiser ad operations.
+  * Added detailed technical stack breakdowns (Laravel, Sanctum, Spatie, jQuery, UIKit, SwiperJS), frontend script mappings (custom-jquery.js, search-news.js), CSS layout guidelines (CLS heights, Swiper anti-shift templates), and visual sequence data flow diagrams.
+
+
+
