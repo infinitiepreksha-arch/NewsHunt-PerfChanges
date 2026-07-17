@@ -731,6 +731,51 @@ We deferred flag images inside language modals to only load when the modal is ab
 * **Benefit**: Reduces Largest Contentful Paint (LCP) delay by more than 12 seconds. Eliminates vertical layout shifts on carousel initialization and dynamically loaded weather icons, bringing CLS close to the ideal green threshold.
 * **Caution**: Ensure all newly uploaded flags are run through the controller which compresses them. Any new weather icons must specify both width and height properties in HTML to prevent shifting.
 
+---
+
+## 16. Post Detail Page Database Optimization (Phase 1)
+
+### Root Cause
+Loading a single post detail page executed 29 database queries and hydrated 366 Eloquent models. Specific causes included:
+1. Executing counts on the `reactions` table on every page load to check if seeds were complete.
+2. Checking database favorites and view logs even for unauthenticated guest visitors.
+3. Fetching reaction counts in N+1 loop queries inside `PostDetailController`.
+4. Querying next/previous posts via `select *` loading heavy description payloads.
+
+### The Solution & Rationale
+1. Cached reactions seed existence check permanently in memory.
+2. Bypassed favorites table hits and view counting logs entirely for guest visitors.
+3. Preloaded reaction models once and mapped counts in memory.
+4. Restricted next/previous queries to selective columns only (`id`, `title`, `slug`, `image`, etc.).
+
+### Files Modified
+* [PostDetailController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/PostDetailController.php)
+
+### Impact & Scalability
+* **Benefit**: Reduced queries to 20, and model hydrations from 366 models down to 23 models.
+* **Caution**: Guest views are only tracked via cookies and never written to the `post_views` table.
+
+---
+
+## 17. Post Detail Page Database Optimization (Phase 2 - Extended)
+
+### Root Cause
+Even after Phase 1, the post page still executed duplicate subscriber languages queries, uncached static reactions definitions queries, and redundant topics queries.
+
+### The Solution & Rationale
+1. **Cached Reaction Definitions**: Wrapped `Reaction::all()` inside a forever cache, reducing the reactions definition query to 0.
+2. **Request Attribute Sharing**: Shared resolved active subscriber news language IDs in Symfony request attributes, preventing duplicate subscribers database queries between the controller and the View Composer.
+3. **Removed Duplicate Topics Query**: Deleted the topics dropdown list query from `PostDetailController.php`, inheriting the globally shared View Composer `$topics` collection instead.
+
+### Files Modified
+* [PostDetailController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/PostDetailController.php)
+* [AppServiceProvider.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Providers/AppServiceProvider.php)
+
+### Impact & Scalability
+* **Benefit**: Dropped queries to 17 statements and model hydrations to only 12 models.
+* **Caution**: Any adjustments to custom reactions definitions requires manual cache clearing (`php artisan cache:clear`).
+
+
 
 
 

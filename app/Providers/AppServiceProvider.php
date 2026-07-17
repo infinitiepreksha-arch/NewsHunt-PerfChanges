@@ -109,40 +109,45 @@ class AppServiceProvider extends ServiceProvider
                 });
 
                 // Get subscribed language IDs
-                if ($userId) {
-                    $subscribedLanguageIds = NewsLanguageSubscriber::where('user_id', $userId)->pluck('news_language_id');
-                    if ($subscribedLanguageIds->isEmpty()) {
-                        if ($request->attributes->has('active_language_cache')) {
-                            $defaultLanguage = $request->attributes->get('active_language_cache');
-                        } else {
-                            $defaultLanguage = \Illuminate\Support\Facades\Cache::rememberForever('news_language_default_active', function() {
-                                return NewsLanguage::where('is_active', 1)->first();
-                            });
-                            $request->attributes->set('active_language_cache', $defaultLanguage);
-                        }
-                        if ($defaultLanguage) {
-                            NewsLanguageSubscriber::create([
-                                'user_id'          => $userId,
-                                'news_language_id' => $defaultLanguage->id,
-                            ]);
-                            $subscribedLanguageIds = collect([$defaultLanguage->id]);
-                        }
-                    }
+                if ($request->attributes->has('subscribed_language_ids')) {
+                    $subscribedLanguageIds = $request->attributes->get('subscribed_language_ids');
                 } else {
-                    $sessionLanguageId = session('selected_news_language');
-                    if ($sessionLanguageId) {
-                        $subscribedLanguageIds = collect([$sessionLanguageId]);
-                    } else {
-                        if ($request->attributes->has('active_language_cache')) {
-                            $defaultActiveLanguage = $request->attributes->get('active_language_cache');
-                        } else {
-                            $defaultActiveLanguage = \Illuminate\Support\Facades\Cache::rememberForever('news_language_default_active', function() {
-                                return NewsLanguage::where('is_active', 1)->first();
-                            });
-                            $request->attributes->set('active_language_cache', $defaultActiveLanguage);
+                    if ($userId) {
+                        $subscribedLanguageIds = NewsLanguageSubscriber::where('user_id', $userId)->pluck('news_language_id');
+                        if ($subscribedLanguageIds->isEmpty()) {
+                            if ($request->attributes->has('active_language_cache')) {
+                                $defaultLanguage = $request->attributes->get('active_language_cache');
+                            } else {
+                                $defaultLanguage = \Illuminate\Support\Facades\Cache::rememberForever('news_language_default_active', function() {
+                                    return NewsLanguage::where('is_active', 1)->first();
+                                });
+                                $request->attributes->set('active_language_cache', $defaultLanguage);
+                            }
+                            if ($defaultLanguage) {
+                                NewsLanguageSubscriber::create([
+                                    'user_id'          => $userId,
+                                    'news_language_id' => $defaultLanguage->id,
+                                ]);
+                                $subscribedLanguageIds = collect([$defaultLanguage->id]);
+                            }
                         }
-                        $subscribedLanguageIds = $defaultActiveLanguage ? collect([$defaultActiveLanguage->id]) : collect();
+                    } else {
+                        $sessionLanguageId = session('selected_news_language');
+                        if ($sessionLanguageId) {
+                            $subscribedLanguageIds = collect([$sessionLanguageId]);
+                        } else {
+                            if ($request->attributes->has('active_language_cache')) {
+                                $defaultActiveLanguage = $request->attributes->get('active_language_cache');
+                            } else {
+                                $defaultActiveLanguage = \Illuminate\Support\Facades\Cache::rememberForever('news_language_default_active', function() {
+                                    return NewsLanguage::where('is_active', 1)->first();
+                                });
+                                $request->attributes->set('active_language_cache', $defaultActiveLanguage);
+                            }
+                            $subscribedLanguageIds = $defaultActiveLanguage ? collect([$defaultActiveLanguage->id]) : collect();
+                        }
                     }
+                    $request->attributes->set('subscribed_language_ids', $subscribedLanguageIds);
                 }
 
                 // Resolve finalLanguageCode and web_languages

@@ -84,7 +84,9 @@ class PostDetailController extends Controller
         $reactionUsers   = [];
 
         // Fetch all reactions once for loop optimization
-        $reactionsList = Reaction::all();
+        $reactionsList = \Illuminate\Support\Facades\Cache::rememberForever('all_reactions_definition', function() {
+            return Reaction::all();
+        });
 
         foreach ($getReactCounts as $getReractCount) {
             $reaction             = $reactionsList->firstWhere('name', $getReractCount->name);
@@ -120,11 +122,6 @@ class PostDetailController extends Controller
         }
         $post->channel_logo = url('storage/images/' . $post->channel_logo);
 
-        $topics = Topic::select('id', 'name', 'slug')
-            ->where('status', 'active')
-            ->take(5)
-            ->get();
-
         // Restrict prev/next queries to specific columns
         $previousPost = Post::select('id', 'title', 'slug', 'image', 'video_thumb', 'type')
             ->where('id', '<', $post->id)
@@ -135,16 +132,22 @@ class PostDetailController extends Controller
             ->orderBy('id')
             ->first();
 
-        if ($userId) {
-            $subscribedLanguageIds = NewsLanguageSubscriber::where('user_id', $userId)->pluck('news_language_id');
+        $request = request();
+        if ($request->attributes->has('subscribed_language_ids')) {
+            $subscribedLanguageIds = $request->attributes->get('subscribed_language_ids');
         } else {
-            $sessionLanguageId = session('selected_news_language');
-            if ($sessionLanguageId) {
-                $subscribedLanguageIds = collect([$sessionLanguageId]);
+            if ($userId) {
+                $subscribedLanguageIds = NewsLanguageSubscriber::where('user_id', $userId)->pluck('news_language_id');
             } else {
-                $defaultActiveLanguage = NewsLanguage::where('is_active', 1)->first();
-                $subscribedLanguageIds = $defaultActiveLanguage ? collect([$defaultActiveLanguage->id]) : collect();
+                $sessionLanguageId = session('selected_news_language');
+                if ($sessionLanguageId) {
+                    $subscribedLanguageIds = collect([$sessionLanguageId]);
+                } else {
+                    $defaultActiveLanguage = NewsLanguage::where('is_active', 1)->first();
+                    $subscribedLanguageIds = $defaultActiveLanguage ? collect([$defaultActiveLanguage->id]) : collect();
+                }
             }
+            $request->attributes->set('subscribed_language_ids', $subscribedLanguageIds);
         }
 
         $relatedPosts = Post::select($this->selectPostDescriptionFields())
@@ -201,7 +204,7 @@ class PostDetailController extends Controller
         }
 
         $settings = \App\Services\CachingService::getSystemSettings();
-        return view("front_end/" . $theme . "/pages/post-detail-page", compact('title', 'reactions', 'defaultImage', 'emoji', 'getTopReactions', 'settings', 'post', 'relatedPosts', 'topics', 'previousPost', 'nextPost', 'post_label', 'postImages', 'theme', 'image', 'post_title', 'description', 'freeTrialLimit', 'isDailyLimitEligible', 'dailyLimitReached', 'subscriptionLimitReached','mainImage'));
+        return view("front_end/" . $theme . "/pages/post-detail-page", compact('title', 'reactions', 'defaultImage', 'emoji', 'getTopReactions', 'settings', 'post', 'relatedPosts', 'previousPost', 'nextPost', 'post_label', 'postImages', 'theme', 'image', 'post_title', 'description', 'freeTrialLimit', 'isDailyLimitEligible', 'dailyLimitReached', 'subscriptionLimitReached','mainImage'));
     }
 
     public function getRandomAd()
