@@ -751,6 +751,26 @@ Loading a single post detail page executed 29 database queries and hydrated 366 
 ### Files Modified
 * [PostDetailController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/PostDetailController.php)
 
+### Code Comparison
+```diff
+--- [ORIGINAL CODE]
++++ [OPTIMIZED CODE]
+@@ -58,9 +58,5 @@
+-        $reactCountCheck = Reaction::count();
+-        if ($reactCountCheck === 0) {
+-            Artisan::call('db:seed', [ ... ]);
+-        }
++        $reactCountCheck = Cache::rememberForever('reactions_seeded_check', function() {
++            return Reaction::count();
++        });
+ 
+-        $is_bookmark = Favorite::where('user_id', $userId)->where('post_id', $post->id)->exists() ? 1 : 0;
++        $is_bookmark = 0;
++        if ($userId && $userId != '0') {
++            $is_bookmark = Favorite::where('user_id', $userId)->where('post_id', $post->id)->exists() ? 1 : 0;
++        }
+```
+
 ### Impact & Scalability
 * **Benefit**: Reduced queries to 20, and model hydrations from 366 models down to 23 models.
 * **Caution**: Guest views are only tracked via cookies and never written to the `post_views` table.
@@ -771,11 +791,48 @@ Even after Phase 1, the post page still executed duplicate subscriber languages 
 * [PostDetailController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/PostDetailController.php)
 * [AppServiceProvider.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Providers/AppServiceProvider.php)
 
+### Code Comparison
+```diff
+--- [ORIGINAL CODE]
++++ [OPTIMIZED CODE]
+@@ -86,9 +86,5 @@
+-        // Fetch all reactions once for loop optimization
+-        $reactionsList = Reaction::all();
++        // Fetch all reactions once for loop optimization
++        $reactionsList = \Illuminate\Support\Facades\Cache::rememberForever('all_reactions_definition', function() {
++            return Reaction::all();
++        });
+ 
+-        $topics = Topic::select('id', 'name', 'slug')->where('status', 'active')->take(5)->get();
+-
+-        if ($userId) {
+-            $subscribedLanguageIds = NewsLanguageSubscriber::where('user_id', $userId)->pluck('news_language_id');
++        $request = request();
++        if ($request->attributes->has('subscribed_language_ids')) {
++            $subscribedLanguageIds = $request->attributes->get('subscribed_language_ids');
+         } else {
+-            $sessionLanguageId = session('selected_news_language');
+-            if ($sessionLanguageId) {
+-                $subscribedLanguageIds = collect([$sessionLanguageId]);
+-            } else {
+-                $defaultActiveLanguage = NewsLanguage::where('is_active', 1)->first();
+-                $subscribedLanguageIds = $defaultActiveLanguage ? collect([$defaultActiveLanguage->id]) : collect();
+-            }
++            if ($userId) {
++                $subscribedLanguageIds = NewsLanguageSubscriber::where('user_id', $userId)->pluck('news_language_id');
++            } else {
++                $sessionLanguageId = session('selected_news_language');
++                if ($sessionLanguageId) {
++                    $subscribedLanguageIds = collect([$sessionLanguageId]);
++                } else {
++                    $defaultActiveLanguage = NewsLanguage::where('is_active', 1)->first();
++                    $subscribedLanguageIds = $defaultActiveLanguage ? collect([$defaultActiveLanguage->id]) : collect();
++                }
++            }
++            $request->attributes->set('subscribed_language_ids', $subscribedLanguageIds);
+         }
+```
+
 ### Impact & Scalability
 * **Benefit**: Dropped queries to 17 statements and model hydrations to only 12 models.
 * **Caution**: Any adjustments to custom reactions definitions requires manual cache clearing (`php artisan cache:clear`).
-
-
-
-
-
