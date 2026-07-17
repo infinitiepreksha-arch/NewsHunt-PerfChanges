@@ -26,14 +26,23 @@ class PostDetailController extends Controller
     const TIME_FORMATE = 'Y-m-d H:i';
     public function index($slug)
     {
-        if (Reaction::count() === 0) {
-            Artisan::call('db:seed', [
-                '--class' => 'ReactionsTableSeeder',
-                '--force' => true,
-            ]);
-        }
+        // Cache reactions seeding check to avoid querying on every request
+        $reactionCount = \Illuminate\Support\Facades\Cache::rememberForever('reaction_count_seeded', function () {
+            $count = Reaction::count();
+            if ($count === 0) {
+                Artisan::call('db:seed', [
+                    '--class' => 'ReactionsTableSeeder',
+                    '--force' => true,
+                ]);
+                return Reaction::count();
+            }
+            return $count;
+        });
 
-        $defaultImage = Setting::where('name', 'default_image')->first();
+        // Use system settings cache
+        $defaultImageVal = \App\Services\CachingService::getSystemSettings('default_image') ?: 'public/front_end/classic/images/default/post-placeholder.jpg';
+        $defaultImage = (object) ['value' => $defaultImageVal];
+
         $post         = Post::with('images')
             ->select($this->selectPostDescriptionFields())
             ->join('channels', 'posts.channel_id', '=', 'channels.id')
@@ -52,12 +61,18 @@ class PostDetailController extends Controller
             
         $postImages = array_merge([$mainImage], $galleryImages);
 
-        $userId   = auth()->user()->id ?? "0";
+        $userId   = auth()->check() ? auth()->user()->id : null;
         $image    = $post->image;
-        $bookmark = Favorite::where('user_id', $userId)
-            ->where('post_id', $post->id)
-            ->first();
-        $post->is_bookmark = $bookmark ? 1 : 0;
+
+        // Guest Favorites Bypass
+        if ($userId) {
+            $bookmark = Favorite::where('user_id', $userId)
+                ->where('post_id', $post->id)
+                ->first();
+            $post->is_bookmark = $bookmark ? 1 : 0;
+        } else {
+            $post->is_bookmark = 0;
+        }
 
         $getReactCountsData = $post->getReactionsSummary();
 
@@ -68,9 +83,12 @@ class PostDetailController extends Controller
         $emoji           = "";
         $reactionUsers   = [];
 
+        // Fetch all reactions once for loop optimization
+        $reactionsList = Reaction::all();
+
         foreach ($getReactCounts as $getReractCount) {
-            $reaction             = Reaction::where('name', $getReractCount->name)->first();
-            $getReractCount->uuid = $reaction->uuid;
+            $reaction             = $reactionsList->firstWhere('name', $getReractCount->name);
+            $getReractCount->uuid = $reaction->uuid ?? '';
 
             $reactionUsers[$getReractCount->name] = [];
 
@@ -83,7 +101,7 @@ class PostDetailController extends Controller
                 if ($getReractCount->name === $reactionName) {
                     $reactionUsers[$getReractCount->name][] = $userDetails;
                 }
-                if ($userId == $user_id) {
+                if ($userId && $userId == $user_id) {
                     $emoji = $getEmoji;
                 }
             }
@@ -107,8 +125,16 @@ class PostDetailController extends Controller
             ->take(5)
             ->get();
 
-        $previousPost = Post::where('id', '<', $post->id)->orderBy('id', 'desc')->first();
-        $nextPost     = Post::where('id', '>', $post->id)->orderBy('id')->first();
+        // Restrict prev/next queries to specific columns
+        $previousPost = Post::select('id', 'title', 'slug', 'image', 'video_thumb', 'type')
+            ->where('id', '<', $post->id)
+            ->orderBy('id', 'desc')
+            ->first();
+        $nextPost     = Post::select('id', 'title', 'slug', 'image', 'video_thumb', 'type')
+            ->where('id', '>', $post->id)
+            ->orderBy('id')
+            ->first();
+
         if ($userId) {
             $subscribedLanguageIds = NewsLanguageSubscriber::where('user_id', $userId)->pluck('news_language_id');
         } else {
@@ -142,13 +168,14 @@ class PostDetailController extends Controller
                 return $item;
             });
 
-        $post_label      = Setting::get()->where('name', 'news_label_place_holder')->first();
-        $reactions       = Reaction::get();
+        $post_label_val  = \App\Services\CachingService::getSystemSettings('news_label_place_holder');
+        $post_label      = (object) ['value' => $post_label_val];
+        $reactions       = $reactionsList;
         $title           = "{$post->title} | {$post->topic_name}";
         $post_title      = $post->title;
         $description     = $post->description;
-        $postVisitLimit  = $setting->free_trial_post_limit ?? 10;
-        $storyVisitLimit = $setting->free_trial_post_limit ?? 10;
+        $postVisitLimit  = \App\Services\CachingService::getSystemSettings('free_trial_post_limit') ?? 10;
+        $storyVisitLimit = \App\Services\CachingService::getSystemSettings('free_trial_post_limit') ?? 10;
         $theme           = getTheme();
 
         $user                     = auth()->user();
@@ -156,7 +183,7 @@ class PostDetailController extends Controller
         $subscriptionLimitReached = false;
         $dailyLimitReached        = false; // This will now be handled primarily in JS
 
-        $freeTrialLimit = (int) (Setting::where('name', 'free_trial_post_limit')->value('value') ?? 10);
+        $freeTrialLimit = (int) (\App\Services\CachingService::getSystemSettings('free_trial_post_limit') ?? 10);
         $isDailyLimitEligible = false;
 
         if ($subscription) {
@@ -173,7 +200,7 @@ class PostDetailController extends Controller
             $isDailyLimitEligible = true;
         }
 
-        $settings = Setting::pluck('value', 'name');
+        $settings = \App\Services\CachingService::getSystemSettings();
         return view("front_end/" . $theme . "/pages/post-detail-page", compact('title', 'reactions', 'defaultImage', 'emoji', 'getTopReactions', 'settings', 'post', 'relatedPosts', 'topics', 'previousPost', 'nextPost', 'post_label', 'postImages', 'theme', 'image', 'post_title', 'description', 'freeTrialLimit', 'isDailyLimitEligible', 'dailyLimitReached', 'subscriptionLimitReached','mainImage'));
     }
 

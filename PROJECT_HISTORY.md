@@ -710,3 +710,20 @@ Deferred AJAX loading for Navbar Category Dropdowns and homepage sliders (Most R
   7. **Universal JavaScript Lazy Load Filter**: Updated `main.blade.php` to query all `lazy-img` tags and filter out language modal images dynamically using `.closest()` rather than complex CSS Selectors Level 4 `:not()` exclusions. This fixes flag images loading eagerly in environments (like headless crawler browsers) that do not support Level 4 selectors.
   8. **Weather Icon Dimensions**: Added explicit `width="100" height="100"` attributes and inline styling to `img#weather-icon` inside `index.blade.php` to prevent it from shifting the page layout when the weather API completes.
   9. **E-Newspaper Aspect-Ratio CLS Resolution**: Removed conflicting `height: 300px;` styling from the `.epaper_css` class inside `custom.css`, allowing UIKit's aspect ratio containers (`ratio-1x1`, `ratio-16x9`) to size the E-Newspaper block consistently on mobile and desktop viewports.
+
+### [2026-07-17] Post Detail Page & Global View Composer Optimization
+
+* **Feature**: Optimized the performance of the single Post Detail page and globally cached the shared View Composer variables (categories, channels, settings, sidebars) to reduce database hits across all front-end page requests.
+* **Files Modified**:
+  * [app/Providers/AppServiceProvider.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Providers/AppServiceProvider.php)
+  * [app/Http/Controllers/PostDetailController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/PostDetailController.php)
+* **Logic Changes**:
+  1. **Global View Composer Caching**: Wrapped the wildcard view composer dataset (topics list, channel lists, channel top posts, settings, custom configurations) inside `AppServiceProvider.php` in a `Cache::remember` block for 10 minutes. The cache key is scoped dynamically by active Web Language and Subscribed News Languages. This cuts down database query overhead globally on every single frontend page request by 12 to 15 queries.
+  2. **getRecentPosts Signature Update**: Optimized `getRecentPosts` inside `AppServiceProvider.php` to accept `$subscribedLanguageIds` directly, preventing it from executing redundant queries on user subscription statuses.
+  3. **Reaction Seeding Check Bypass**: Replaced the expensive `Reaction::count() === 0` check inside `PostDetailController.php` index method with a forever-cached value, avoiding hitting the reactions table count on every single post load.
+  4. **System Settings Cache Usage**: Replaced all direct database queries on the `settings` table inside `PostDetailController.php` (such as plucking settings, getting `news_label_place_holder`, and getting `free_trial_post_limit`) with values fetched from `CachingService::getSystemSettings()`. This also resolved an existing bug where `$setting` was accessed without initialization.
+  5. **Guest Favorites Bypass**: Configured the favorite status lookup inside `PostDetailController.php` to bypass the `favorites` table completely if the visitor is a guest (null or `'0'`), directly assigning `is_bookmark = 0`.
+  6. **Reactions N+1 Query Fix**: Fetched all active reaction models once using `Reaction::all()` outside of the post reactions loop inside `PostDetailController.php`. Used collection filters (`firstWhere`) to map UUIDs in memory, eliminating multiple sequential queries inside the loop.
+  7. **Next/Previous Selective Columns**: Modified next and previous post queries to retrieve only the required fields (`id`, `title`, `slug`, `image`, `video_thumb`, `type`) instead of executing `select *`, saving database payload and model hydration memory.
+  8. **Guest PostView Query Bypass**: In the `viewCount` method of `PostDetailController.php`, skipped the `PostView` database select query entirely for guest visitors, since views are only tracked via cookies for guests and are never written to the `post_views` table.
+

@@ -46,13 +46,8 @@ class AppServiceProvider extends ServiceProvider
             }
 
             try {
-                $composerData = [];
                 $userId = Auth::id() ?? 0;
 
-                // changes done here by P
-                /* OLD CODE:
-                $defaultImage = url('storage/' . $this->getSetting('default_image')->value);
-                */
                 if ($request->attributes->has('settings_cache')) {
                     $allSettings = $request->attributes->get('settings_cache');
                 } else {
@@ -62,8 +57,6 @@ class AppServiceProvider extends ServiceProvider
                 $getSetting = function ($name) use ($allSettings) {
                     return $allSettings->get($name);
                 };
-                $defaultImageSetting = $getSetting('default_image');
-                $defaultImage = $defaultImageSetting ? url('storage/' . $defaultImageSetting->value) : '';
 
                 // Get subscribed language IDs
                 if ($userId) {
@@ -98,297 +91,8 @@ class AppServiceProvider extends ServiceProvider
                     }
                 }
 
-                // Fetch topics
-                $topics = Topic::select('id', 'name', 'slug', 'logo')
-                    ->where('status', 'active')
-                    ->whereHas('posts', function ($query) use ($subscribedLanguageIds) {
-                        if ($subscribedLanguageIds->isNotEmpty()) {
-                            $query->whereIn('news_language_id', $subscribedLanguageIds);
-                        }
-                    })
-                    ->orderBy('categorie_order', 'asc')
-                    ->take(8)
-                    ->get();
-
-                // changes done here by P
-                /* OLD CODE:
-                // Fetch posts for each topic
-                foreach ($topics as $topic) {
-                    $topicPostsQuery = Post::select('id', 'image', 'video', 'video_thumb', 'type', 'title', 'slug', 'comment', 'publish_date', 'pubdate', 'status', 'view_count', 'reaction')
-                        ->where('posts.status', 'active')
-                        ->whereHas('channel', function ($query) {
-                            $query->where('status', 'active');
-                        })
-                        ->whereHas('topic', function ($q) {
-                            $q->where('status', 'active');
-                        })
-                        ->where('topic_id', $topic->id);
-
-                    if ($userId) {
-                        $subscribedLanguageIds = NewsLanguageSubscriber::where('user_id', $userId)->pluck('news_language_id');
-                    } else {
-                        $sessionLanguageId = session('selected_news_language');
-                        if ($sessionLanguageId) {
-                            // If user selected a language, use it (even if not active)
-                            $subscribedLanguageIds = collect([$sessionLanguageId]);
-                        } else {
-                            // If not selected, use the first active language
-                            $defaultActiveLanguage = NewsLanguage::where('is_active', 1)->first();
-                            $subscribedLanguageIds = $defaultActiveLanguage ? collect([$defaultActiveLanguage->id]) : collect();
-                        }
-                    }
-                    if ($subscribedLanguageIds->isNotEmpty()) {
-                        $topicPostsQuery->whereIn('posts.news_language_id', $subscribedLanguageIds);
-                    }
-
-                    $topic->posts = $topicPostsQuery
-                        ->orderBy('publish_date', 'DESC')
-                        ->take(5)
-                        ->get()
-                        ->map(function ($item) use ($defaultImage) {
-                            $item->image = $item->image ?? $defaultImage;
-
-                            if ($item->publish_date) {
-                                $item->publish_date = Carbon::parse($item->publish_date)->diffForHumans();
-                            } elseif ($item->pubdate) {
-                                $item->pubdate = Carbon::parse($item->pubdate)->diffForHumans();
-                            }
-                            return $item;
-                        });
-                }
-                */
-
-                // We no longer fetch category posts statically on initial load.
-                // Instead, they are lazy loaded via AJAX when hovering/clicking on the dropdown.
-
-
-                $langCode = 'zxx';
-                $dir      = 'ltr';
-
-                if ($subscribedLanguageIds->isNotEmpty()) {
-                    $firstLangId = $subscribedLanguageIds->first();
-                    $cachedActiveLang = $request->attributes->get('active_language_cache');
-                    if ($cachedActiveLang && $cachedActiveLang->id == $firstLangId) {
-                        $newsLang = $cachedActiveLang;
-                    } else {
-                        $newsLang = NewsLanguage::find($firstLangId);
-                    }
-                    if ($newsLang) {
-                        $langCode = $newsLang->code ?? 'zxx';
-                        $dir      = ($langCode === 'ar') ? 'rtl' : 'ltr';
-                    }
-                }
-
-                $channels = Channel::select('id', 'name', 'slug', 'logo')
-                    ->where('status', 'active')
-                    ->whereHas('posts', function ($query) use ($subscribedLanguageIds) {
-                        if ($subscribedLanguageIds->isNotEmpty()) {
-                            $query->whereIn('news_language_id', $subscribedLanguageIds);
-                        }
-                    })
-                    ->take(6)
-                    ->get();
-
-                // changes done here by P
-                /* OLD CODE:
-                // Fetch posts for each selected channel
-                foreach ($channels as $channel) {
-                    $channelPostsQuery = Post::select('id', 'image', 'video', 'video_thumb', 'type', 'title', 'slug', 'comment', 'publish_date', 'reaction', 'pubdate', 'view_count', 'status')
-                        ->where('posts.status', 'active')
-                        ->whereHas('channel', function ($query) {
-                            $query->where('status', 'active');
-                        })
-                    // ->whereHas('topic', function ($q) {
-                    //     $q->where('status', 'active');
-                    // })
-                        ->where(function ($q) {
-                            $q->whereHas('topic', function ($query) {
-                                $query->where('status', 'active');
-                            })
-                                ->orWhereDoesntHave('topic'); // 👈 makes topic optional
-                        })
-                        ->where('channel_id', $channel->id);
-
-                    if ($subscribedLanguageIds->isNotEmpty()) {
-                        $channelPostsQuery->whereIn('news_language_id', $subscribedLanguageIds);
-                    }
-
-                    $channel->posts = $channelPostsQuery
-                        ->orderBy('publish_date', 'DESC')
-                        ->take(4)
-                        ->get()
-                        ->map(function ($item) use ($defaultImage) {
-                            $item->image = $item->image ?? $defaultImage;
-                            if ($item->image === url('storage')) {
-                                $item->image = $defaultImage;
-                            } else {
-                                $item->image = $item->image;
-                            }
-
-                            if ($item->publish_date) {
-                                $item->publish_date = Carbon::parse($item->publish_date)->diffForHumans();
-                            } elseif ($item->pubdate) {
-                                $item->pubdate = Carbon::parse($item->pubdate)->diffForHumans();
-                            }
-                            return $item;
-                        });
-                }
-                */
-
-                // NEW OPTIMIZED CODE:
-                // We fetch only the top 4 posts per channel directly using simple, indexed queries.
-                // This prevents loading all channel posts from the DB and instantiating 1,000+ unnecessary models.
-                foreach ($channels as $channel) {
-                    $channel->posts = Post::select('id', 'image', 'video', 'video_thumb', 'type', 'title', 'slug', 'comment', 'publish_date', 'reaction', 'pubdate', 'view_count', 'status', 'channel_id')
-                        ->where('posts.status', 'active')
-                        ->where('channel_id', $channel->id)
-                        ->whereHas('channel', function ($query) {
-                            $query->where('status', 'active');
-                        })
-                        ->where(function ($q) {
-                            $q->whereHas('topic', function ($query) {
-                                $query->where('status', 'active');
-                            })
-                                ->orWhereDoesntHave('topic');
-                        })
-                        ->when($subscribedLanguageIds->isNotEmpty(), function ($q) use ($subscribedLanguageIds) {
-                            $q->whereIn('news_language_id', $subscribedLanguageIds);
-                        })
-                        ->orderBy('publish_date', 'DESC')
-                        ->take(4)
-                        ->get()
-                        ->map(function ($item) use ($defaultImage) {
-                            $item->image = $item->image ?? $defaultImage;
-                            if ($item->image === url('storage')) {
-                                $item->image = $defaultImage;
-                            }
-                            if ($item->publish_date) {
-                                $item->publish_date = Carbon::parse($item->publish_date)->diffForHumans();
-                            } elseif ($item->pubdate) {
-                                $item->pubdate = Carbon::parse($item->pubdate)->diffForHumans();
-                            }
-                            return $item;
-                        });
-                }
-
-                $channels = $channels->filter(function ($channel) {
-                    return $channel->posts->isNotEmpty();
-                })->values();
-
-                $firstChannelPosts = Post::select('id', 'image', 'video', 'video_thumb', 'type', 'slug', 'title', 'comment', 'reaction', 'view_count', 'publish_date', 'pubdate', 'status')
-                    ->when($subscribedLanguageIds->isNotEmpty(), function ($query) use ($subscribedLanguageIds) {
-                        $query->whereIn('news_language_id', $subscribedLanguageIds);
-                    })
-                    ->where('posts.status', 'active')
-                    ->whereHas('channel', function ($query) {
-                        $query->where('status', 'active');
-                    })
-                    ->where(function ($q) {
-                        $q->whereHas('topic', function ($query) {
-                            $query->where('status', 'active');
-                        })
-                            ->orWhereDoesntHave('topic');
-                    })
-                    ->orderBy('publish_date', 'DESC')
-                    ->take(4)
-                    ->get()
-                    ->map(function ($item) use ($defaultImage) {
-                        $item->image = $item->image ?? $defaultImage;
-                        if ($item->image === url('storage')) {
-                            $item->image = $defaultImage;
-                        }
-                        if ($item->publish_date) {
-                            $item->publish_date = Carbon::parse($item->publish_date)->diffForHumans();
-                        } elseif ($item->pubdate) {
-                            $item->pubdate = Carbon::parse($item->pubdate)->diffForHumans();
-                        }
-                        return $item;
-                    });
-
-                $data = [
-                    [
-                        "id"    => 0,
-                        "name"  => __('frontend-labels.home.all'),
-                        "slug"  => "",
-                        "posts" => $firstChannelPosts,
-                    ],
-                ];
-                $channels->prepend((object) $data[0]);
-                // changes done here by P
-                // $socialsettings = Setting::pluck('value', 'name');
-                $socialsettings = $allSettings->map(fn($item) => $item->value);
-                $news_languages_overwrite = NewsLanguage::where('status', 'active')->get();
-                $news_language_status     = NewsLanguageStatus::getCurrentStatus();
-                // changes done here by P
-                // $newsletterSettings       = $this->getNewsletterSettings();
-                $newsletterSettings       = $this->getNewsletterSettings($allSettings);
-
-                // changes done here by P
-                /* OLD CODE:
-                // ---------------------------------------------
-                // 1️⃣ Determine Locale based on Route
-                // ---------------------------------------------
-                if (request()->is('admin*')) {
-                    $finalLanguageCode = Session::get('admin_locale', config('app.locale'));
-                    app()->setLocale($finalLanguageCode);
-
-                    $web_languages = $languages = Language::all();
-                    $view->with([
-                        'languages'         => $languages,
-                        'finalLanguageCode' => $finalLanguageCode,
-                    ]);
-                } elseif (Session::has('web_locale') && Session::get('web_locale') != null) {
-                    // 2️⃣ If web language already selected → DO NOT override
-                    $finalLanguageCode = Session::get('web_locale');
-                    app()->setLocale($finalLanguageCode);
-
-                    $web_languages = Language::all();
-
-                    // push to view
-                    $view->with([
-                        'web_languages'     => $web_languages,
-                        'finalLanguageCode' => $finalLanguageCode,
-                    ]);
-
-                } else {
-
-                    // ---------------------------------------------
-                    // 3️⃣ No web language → apply subscription language
-                    // ---------------------------------------------
-
-                    $checklanguageCode = NewsLanguage::find($subscribedLanguageIds)->first();
-
-                    if ($checklanguageCode) {
-                        $webLanguage = Language::where('code', $checklanguageCode->code)->first();
-                    }
-
-                    // ---------------------------------------------
-                    // 4️⃣ If no mapping → fallback to default
-                    // ---------------------------------------------
-                    if (empty($webLanguage)) {
-                        $defaultLocale = config('app.locale');
-                        $webLanguage   = Language::where('code', $defaultLocale)->first();
-                    }
-
-                    // ---------------------------------------------
-                    // 5️⃣ Save this as current web locale
-                    // ---------------------------------------------
-                    Session::put('web_locale', $webLanguage->code);
-                    Session::put('web_language', (object) $webLanguage->toArray());
-                    Session::save();
-
-                    app()->setLocale($webLanguage->code);
-
-                    $finalLanguageCode = $webLanguage->code;
-                    $web_languages     = Language::all();
-
-                    // push to view
-                    $view->with([
-                        'web_languages'     => $web_languages,
-                        'finalLanguageCode' => $finalLanguageCode,
-                    ]);
-                }
-                */
+                // Resolve finalLanguageCode and web_languages
+                $composerData = [];
                 if (request()->is('admin*')) {
                     $finalLanguageCode = Session::get('admin_locale', config('app.locale'));
                     app()->setLocale($finalLanguageCode);
@@ -427,146 +131,199 @@ class AppServiceProvider extends ServiceProvider
                     $composerData['finalLanguageCode'] = $finalLanguageCode;
                 }
 
-                // changes done here by P
-                /* OLD CODE:
-                $freeTrialSettings = Setting::whereIn('name', [
-                    'free_trial_status',
-                    'free_trial_post_limit',
-                    'free_trial_story_limit',
-                    'free_trial_e_papers_and_magazines_limit'
-                ])->pluck('value', 'name');
-                $cookiesPopupStatus = Setting::select('value')->where('name', 'cookies_popup_status')->first();
-                */
-                $freeTrialSettings = [
-                    'free_trial_status'                       => $getSetting('free_trial_status')->value ?? '0',
-                    'free_trial_post_limit'                   => $getSetting('free_trial_post_limit')->value ?? '0',
-                    'free_trial_story_limit'                  => $getSetting('free_trial_story_limit')->value ?? '0',
-                    'free_trial_e_papers_and_magazines_limit' => $getSetting('free_trial_e_papers_and_magazines_limit')->value ?? '0',
-                ];
-                $cookiesPopupStatus = $getSetting('cookies_popup_status');
+                $langCode = 'zxx';
+                $dir      = 'ltr';
 
-                // changes done here by P
-                $composerData = array_merge($composerData, [
-                    // changes done here by P
-                    // 'favicon'                           => $this->getFavicon(),
-                    'favicon'                           => $getSetting('favicon_icon') ? url('storage/' . $getSetting('favicon_icon')->value) : '',
+                if ($subscribedLanguageIds->isNotEmpty()) {
+                    $firstLangId = $subscribedLanguageIds->first();
+                    $cachedActiveLang = $request->attributes->get('active_language_cache');
+                    if ($cachedActiveLang && $cachedActiveLang->id == $firstLangId) {
+                        $newsLang = $cachedActiveLang;
+                    } else {
+                        $newsLang = NewsLanguage::find($firstLangId);
+                    }
+                    if ($newsLang) {
+                        $langCode = $newsLang->code ?? 'zxx';
+                        $dir      = ($langCode === 'ar') ? 'rtl' : 'ltr';
+                    }
+                }
 
-                    // changes done here by P
-                    // 'webTitle'                          => $this->getSetting('company_name'),
-                    'webTitle'                          => $getSetting('company_name'),
+                $subscribedStr = $subscribedLanguageIds->isNotEmpty() ? $subscribedLanguageIds->implode('_') : 'none';
+                $cacheKey = "shared_view_composer_data_" . $finalLanguageCode . "_" . $subscribedStr;
 
-                    // changes done here by P
-                    // 'post_label'                        => $this->getSetting('news_label_place_holder'),
-                    'post_label'                        => $getSetting('news_label_place_holder'),
+                $cachedComposerData = \Illuminate\Support\Facades\Cache::remember($cacheKey, 600, function () use ($subscribedLanguageIds, $allSettings, $getSetting, $langCode, $dir, $finalLanguageCode, $web_languages) {
+                    $defaultImageSetting = $getSetting('default_image');
+                    $defaultImage = $defaultImageSetting ? url('storage/' . $defaultImageSetting->value) : '';
 
-                    'headerPosts'                       => $this->getRecentPosts(8),
+                    // Fetch topics
+                    $topics = Topic::select('id', 'name', 'slug', 'logo')
+                        ->where('status', 'active')
+                        ->whereHas('posts', function ($query) use ($subscribedLanguageIds) {
+                            if ($subscribedLanguageIds->isNotEmpty()) {
+                                $query->whereIn('news_language_id', $subscribedLanguageIds);
+                            }
+                        })
+                        ->orderBy('categorie_order', 'asc')
+                        ->take(8)
+                        ->get();
 
-                    // changes done here by P
-                    // 'termsOfCondition'                  => $this->getSetting('terms_conditions'),
-                    'termsOfCondition'                  => $getSetting('terms_conditions'),
+                    $channels = Channel::select('id', 'name', 'slug', 'logo')
+                        ->where('status', 'active')
+                        ->whereHas('posts', function ($query) use ($subscribedLanguageIds) {
+                            if ($subscribedLanguageIds->isNotEmpty()) {
+                                $query->whereIn('news_language_id', $subscribedLanguageIds);
+                            }
+                        })
+                        ->take(6)
+                        ->get();
 
-                    // changes done here by P
-                    // 'socialMedia'                       => Setting::select('name', 'value', 'updated_at')->get()->toArray(),
-                    'socialMedia'                       => $allSettings->values()->toArray(),
-                    'channels'                          => $channels,
-                    'topics'                            => $topics,
+                    foreach ($channels as $channel) {
+                        $channel->posts = Post::select('id', 'image', 'video', 'video_thumb', 'type', 'title', 'slug', 'comment', 'publish_date', 'reaction', 'pubdate', 'view_count', 'status', 'channel_id')
+                            ->where('posts.status', 'active')
+                            ->where('channel_id', $channel->id)
+                            ->whereHas('channel', function ($query) {
+                                $query->where('status', 'active');
+                            })
+                            ->where(function ($q) {
+                                $q->whereHas('topic', function ($query) {
+                                    $query->where('status', 'active');
+                                })
+                                    ->orWhereDoesntHave('topic');
+                            })
+                            ->when($subscribedLanguageIds->isNotEmpty(), function ($q) use ($subscribedLanguageIds) {
+                                $q->whereIn('news_language_id', $subscribedLanguageIds);
+                            })
+                            ->orderBy('publish_date', 'DESC')
+                            ->take(4)
+                            ->get()
+                            ->map(function ($item) use ($defaultImage) {
+                                $item->image = $item->image ?? $defaultImage;
+                                if ($item->image === url('storage')) {
+                                    $item->image = $defaultImage;
+                                }
+                                if ($item->publish_date) {
+                                    $item->publish_date = \Carbon\Carbon::parse($item->publish_date)->diffForHumans();
+                                } elseif ($item->pubdate) {
+                                    $item->pubdate = \Carbon\Carbon::parse($item->pubdate)->diffForHumans();
+                                }
+                                return $item;
+                            });
+                    }
 
-                    // changes done here by P
-                    // 'dark_logo'                         => $this->getSetting('dark_logo'),
-                    'dark_logo'                         => $getSetting('dark_logo'),
+                    $channels = $channels->filter(function ($channel) {
+                        return $channel->posts->isNotEmpty();
+                    })->values();
 
-                    // changes done here by P
-                    // 'light_logo'                        => $this->getSetting('light_logo'),
-                    'light_logo'                        => $getSetting('light_logo'),
+                    $firstChannelPosts = Post::select('id', 'image', 'video', 'video_thumb', 'type', 'slug', 'title', 'comment', 'reaction', 'view_count', 'publish_date', 'pubdate', 'status')
+                        ->when($subscribedLanguageIds->isNotEmpty(), function ($query) use ($subscribedLanguageIds) {
+                            $query->whereIn('news_language_id', $subscribedLanguageIds);
+                        })
+                        ->where('posts.status', 'active')
+                        ->whereHas('channel', function ($query) {
+                            $query->where('status', 'active');
+                        })
+                        ->where(function ($q) {
+                            $q->whereHas('topic', function ($query) {
+                                $query->where('status', 'active');
+                            })
+                                ->orWhereDoesntHave('topic');
+                        })
+                        ->orderBy('publish_date', 'DESC')
+                        ->take(4)
+                        ->get()
+                        ->map(function ($item) use ($defaultImage) {
+                            $item->image = $item->image ?? $defaultImage;
+                            if ($item->image === url('storage')) {
+                                    $item->image = $defaultImage;
+                            }
+                            if ($item->publish_date) {
+                                $item->publish_date = \Carbon\Carbon::parse($item->publish_date)->diffForHumans();
+                            } elseif ($item->pubdate) {
+                                $item->pubdate = \Carbon\Carbon::parse($item->pubdate)->diffForHumans();
+                            }
+                            return $item;
+                        });
 
-                    // changes done here by P
-                    // 'dark_logo_size'                    => $this->getSetting('dark_logo_size'),
-                    'dark_logo_size'                    => $getSetting('dark_logo_size'),
+                    $data = [
+                        [
+                            "id"    => 0,
+                            "name"  => __('frontend-labels.home.all'),
+                            "slug"  => "",
+                            "posts" => $firstChannelPosts,
+                        ],
+                    ];
+                    $channels->prepend((object) $data[0]);
 
-                    // changes done here by P
-                    // 'light_logo_size'                   => $this->getSetting('light_logo_size'),
-                    'light_logo_size'                   => $getSetting('light_logo_size'),
+                    $socialsettings = $allSettings->map(fn($item) => $item->value);
+                    $news_languages_overwrite = NewsLanguage::where('status', 'active')->get();
+                    $news_language_status     = NewsLanguageStatus::getCurrentStatus();
+                    $newsletterSettings       = $this->getNewsletterSettings($allSettings);
 
-                    // changes done here by P
-                    // 'play_store_link'                   => $this->getSetting('play_store_link'),
-                    'play_store_link'                   => $getSetting('play_store_link'),
+                    $freeTrialSettings = [
+                        'free_trial_status'                       => $getSetting('free_trial_status')->value ?? '0',
+                        'free_trial_post_limit'                   => $getSetting('free_trial_post_limit')->value ?? '0',
+                        'free_trial_story_limit'                  => $getSetting('free_trial_story_limit')->value ?? '0',
+                        'free_trial_e_papers_and_magazines_limit' => $getSetting('free_trial_e_papers_and_magazines_limit')->value ?? '0',
+                    ];
+                    $cookiesPopupStatus = $getSetting('cookies_popup_status');
 
-                    // changes done here by P
-                    // 'app_store_link'                    => $this->getSetting('app_store_link'),
-                    'app_store_link'                    => $getSetting('app_store_link'),
+                    $free_trial_status = ($freeTrialSettings['free_trial_status'] ?? '0');
+                    $free_trial_post_limit = (($free_trial_status == '1') ? -1 : ($freeTrialSettings['free_trial_post_limit'] ?? '0'));
+                    $free_trial_story_limit = (($free_trial_status == '1') ? -1 : ($freeTrialSettings['free_trial_story_limit'] ?? '0'));
+                    $free_trial_epaper_limit = (($free_trial_status == '1') ? -1 : ($freeTrialSettings['free_trial_e_papers_and_magazines_limit'] ?? '0'));
 
-                    // changes done here by P
-                    // 'application_download_popup_on_web' => $this->getSetting('application_download_popup_on_web'),
-                    'application_download_popup_on_web' => $getSetting('application_download_popup_on_web'),
+                    return [
+                        'favicon'                           => $getSetting('favicon_icon') ? url('storage/' . $getSetting('favicon_icon')->value) : '',
+                        'webTitle'                          => $getSetting('company_name'),
+                        'post_label'                        => $getSetting('news_label_place_holder'),
+                        'headerPosts'                       => $this->getRecentPosts($subscribedLanguageIds, 8),
+                        'termsOfCondition'                  => $getSetting('terms_conditions'),
+                        'socialMedia'                       => $allSettings->values()->toArray(),
+                        'channels'                          => $channels,
+                        'topics'                            => $topics,
+                        'dark_logo'                         => $getSetting('dark_logo'),
+                        'light_logo'                        => $getSetting('light_logo'),
+                        'dark_logo_size'                    => $getSetting('dark_logo_size'),
+                        'light_logo_size'                   => $getSetting('light_logo_size'),
+                        'play_store_link'                   => $getSetting('play_store_link'),
+                        'app_store_link'                    => $getSetting('app_store_link'),
+                        'application_download_popup_on_web' => $getSetting('application_download_popup_on_web'),
+                        'app_scheme'                        => $getSetting('android_shceme'),
+                        'ios_shceme'                        => $getSetting('ios_shceme'),
+                        'header_script'                     => $getSetting('header_script'),
+                        'footer_script'                     => $getSetting('footer_script'),
+                        'placeholder_image'                 => $getSetting('placeholder_image'),
+                        'sponsor_ad_rotation_time'          => $getSetting('sponsor_ad_rotation_time'),
+                        'seo_title'                         => $getSetting('seo_title'),
+                        'meta_description'                  => $getSetting('meta_description'),
+                        'meta_keywords'                     => $getSetting('meta_keywords'),
+                        'free_trial_status'                 => $free_trial_status,
+                        'free_trial_post_limit'             => $free_trial_post_limit,
+                        'free_trial_story_limit'            => $free_trial_story_limit,
+                        'free_trial_epaper_limit'           => $free_trial_epaper_limit,
+                        'freeTrialStatus'                   => $free_trial_status,
+                        'freeTrialPostLimit'                => $free_trial_post_limit,
+                        'freeTrialStoryLimit'               => $free_trial_story_limit,
+                        'freeTrialEpaperLimit'              => $free_trial_epaper_limit,
+                        'getTheme'                          => $this->getTheme(),
+                        'news_languages_overwrite'          => $news_languages_overwrite,
+                        'news_language_status'              => $news_language_status,
+                        'subscribedLanguageIds'             => $subscribedLanguageIds,
+                        'langCode'                          => $langCode,
+                        'dir'                               => $dir,
+                        'newsletterSettings'                => $newsletterSettings,
+                        'socialsettings'                    => $socialsettings,
+                        'firebaseConfig'                    => $this->getFirebaseConfig($allSettings),
+                        'web_languages'                     => $web_languages,
+                        'finalLanguageCode'                 => $finalLanguageCode,
+                        'defaultImage'                      => $defaultImage,
+                        'cookiesPopupStatus'                => $cookiesPopupStatus,
+                        'web_theme_primary_colour'          => $getSetting('web_theme_primary_colour') ? $getSetting('web_theme_primary_colour')->value : '#9c0d0d',
+                        'web_font'                          => $getSetting('web_font') ? $getSetting('web_font')->value : 'Poppins',
+                    ];
+                });
 
-                    // changes done here by P
-                    // 'app_scheme'                        => $this->getSetting('android_shceme'),
-                    'app_scheme'                        => $getSetting('android_shceme'),
-
-                    // changes done here by P
-                    // 'ios_shceme'                        => $this->getSetting('ios_shceme'),
-                    'ios_shceme'                        => $getSetting('ios_shceme'),
-
-                    // changes done here by P
-                    // 'header_script'                     => $this->getSetting('header_script'),
-                    'header_script'                     => $getSetting('header_script'),
-
-                    // changes done here by P
-                    // 'footer_script'                     => $this->getSetting('footer_script'),
-                    'footer_script'                     => $getSetting('footer_script'),
-
-                    // changes done here by P
-                    // 'placeholder_image'                 => $this->getSetting('placeholder_image'),
-                    'placeholder_image'                 => $getSetting('placeholder_image'),
-
-                    // changes done here by P
-                    // 'sponsor_ad_rotation_time'          => $this->getSetting('sponsor_ad_rotation_time'),
-                    'sponsor_ad_rotation_time'          => $getSetting('sponsor_ad_rotation_time'),
-
-                    // changes done here by P
-                    // 'seo_title'                         => $this->getSetting('seo_title'),
-                    'seo_title'                         => $getSetting('seo_title'),
-
-                    // changes done here by P
-                    // 'meta_description'                  => $this->getSetting('meta_description'),
-                    'meta_description'                  => $getSetting('meta_description'),
-
-                    // changes done here by P
-                    // 'meta_keywords'                     => $this->getSetting('meta_keywords'),
-                    'meta_keywords'                     => $getSetting('meta_keywords'),
-
-                    'free_trial_status'                 => $free_trial_status = ($freeTrialSettings['free_trial_status'] ?? '0'),
-                    'free_trial_post_limit'             => $free_trial_post_limit = (($free_trial_status == '1') ? -1 : ($freeTrialSettings['free_trial_post_limit'] ?? '0')),
-                    'free_trial_story_limit'            => $free_trial_story_limit = (($free_trial_status == '1') ? -1 : ($freeTrialSettings['free_trial_story_limit'] ?? '0')),
-                    'free_trial_epaper_limit'           => $free_trial_epaper_limit = (($free_trial_status == '1') ? -1 : ($freeTrialSettings['free_trial_e_papers_and_magazines_limit'] ?? '0')),
-                    
-                    // Also pass as camelCase for consistency with controller updates
-                    'freeTrialStatus'                   => $free_trial_status,
-                    'freeTrialPostLimit'                => $free_trial_post_limit,
-                    'freeTrialStoryLimit'               => $free_trial_story_limit,
-                    'freeTrialEpaperLimit'              => $free_trial_epaper_limit,
-                    'getTheme'                          => $this->getTheme(),
-                    'news_languages_overwrite'          => $news_languages_overwrite,
-                    'news_language_status'              => $news_language_status,
-                    'subscribedLanguageIds'             => $subscribedLanguageIds, // Pass subscribed IDs to the view
-                    'langCode'                          => $langCode,
-                    'dir'                               => $dir,
-                    'newsletterSettings'                => $newsletterSettings,
-                    'socialsettings'                    => $socialsettings,
-                    'firebaseConfig'                    => $this->getFirebaseConfig($allSettings),
-                    'web_languages'                     => $web_languages,
-                    'finalLanguageCode'                 => $finalLanguageCode,
-                    'defaultImage'                      => $defaultImage,
-                    'cookiesPopupStatus'                => $cookiesPopupStatus,
-
-                    // changes done here by P
-                    // 'web_theme_primary_colour'          => $this->getSetting('web_theme_primary_colour') ? $this->getSetting('web_theme_primary_colour')->value : '#9c0d0d',
-                    'web_theme_primary_colour'          => $getSetting('web_theme_primary_colour') ? $getSetting('web_theme_primary_colour')->value : '#9c0d0d',
-
-                    // changes done here by P
-                    // 'web_font'                          => $this->getSetting('web_font') ? $this->getSetting('web_font')->value : 'Poppins',
-                    'web_font'                          => $getSetting('web_font') ? $getSetting('web_font')->value : 'Poppins',
-                ]);
+                $composerData = array_merge($composerData, $cachedComposerData);
                 $sharedViewData = $composerData;
                 request()->attributes->set('shared_view_data', $sharedViewData);
                 $view->with($sharedViewData);
@@ -687,35 +444,15 @@ class AppServiceProvider extends ServiceProvider
             return "";
         }
     }
-    protected function getRecentPosts($limit)
+    protected function getRecentPosts($subscribedLanguageIds, $limit)
     {
         try {
-            $userId = Auth::id() ?? 0;
-
-            if ($userId) {
-                $subscribedLanguageIds = NewsLanguageSubscriber::where('user_id', $userId)->pluck('news_language_id');
-            } else {
-                $sessionLanguageId = session('selected_news_language');
-                if ($sessionLanguageId) {
-                    // If user selected a language, use it (even if not active)
-                    $subscribedLanguageIds = collect([$sessionLanguageId]);
-                } else {
-                    // If not selected, use the first active language
-                    if (static::$activeLanguageCache !== null) {
-                        $defaultActiveLanguage = static::$activeLanguageCache;
-                    } else {
-                        $defaultActiveLanguage = NewsLanguage::where('is_active', 1)->first();
-                        static::$activeLanguageCache = $defaultActiveLanguage;
-                    }
-                    $subscribedLanguageIds = $defaultActiveLanguage ? collect([$defaultActiveLanguage->id]) : collect();
-                }
-            }
             // Build query with optional language filter
             $query = Post::select('title', 'slug', 'status')
                 ->where('posts.status', 'active')
                 ->orderBy('publish_date', 'DESC');
 
-            if ($subscribedLanguageIds->isNotEmpty()) {
+            if ($subscribedLanguageIds && $subscribedLanguageIds->isNotEmpty()) {
                 $query->whereIn('news_language_id', $subscribedLanguageIds);
             }
 
