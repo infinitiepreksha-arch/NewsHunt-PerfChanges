@@ -145,7 +145,7 @@ class BookmarkController extends Controller
                 ->get()
                 ->map(function ($item) {
                     $item->publish_date = Carbon::parse($item->publish_date)->format('D, d M Y');
-                    $item->description  = strip_tags(html_entity_decode($item->description));
+                    $item->description  = strip_tags(html_entity_decode($item->description ?? ''));
                     return $item;
                 });
 

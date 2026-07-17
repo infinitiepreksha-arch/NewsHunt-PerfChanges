@@ -614,12 +614,13 @@
                                 role="group">
                                 @if (isset($getEnewsSettings))
                                     <article class="post type-post">
-                                        <div class="featured-image epaper_css ratio ratio-1x1 sm:ratio-16x9">
+                                        <div class="featured-image epaper_css" style="height: 300px;">
                                             <img class="media-cover image epaper_css opacity-15 lazy-img"
                                                 src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7"
                                                 data-src="{{ $getEnewsSettings['paperimage'] }}"
-                                                alt="The Art of Baking: From Classic Bread to Artisan Pastries"
-                                                loading="lazy">
+                                                alt="E-Newspaper"
+                                                loading="lazy"
+                                                style="height: 300px; width: 100%; object-fit: cover;">
 
                                         </div>
                                         <div
@@ -994,7 +995,7 @@
                                                         <p
                                                             class="post-excrept ft-tertiary fs-6 text-gray-900 dark:text-white text-opacity-60 text-truncate-2 my-1">
 
-                                                            {{ strip_tags(html_entity_decode($audioPost->description)) }}
+                                                            {{ strip_tags(html_entity_decode($audioPost->description ?? '')) }}
                                                         </p>
                                                         <i class="bi bi-eye fs-5 ms-1" title="Views"></i>
                                                         <span title="Views">{{ $audioPost->view_count }}</span>
@@ -1714,7 +1715,7 @@
                                                                 </div>
                                                                 <p
                                                                     class="post-excrept ft-tertiary fs-6 text-gray-900 dark:text-white text-opacity-60 text-truncate-2 my-1">
-                                                                    {{ strip_tags(html_entity_decode($latest->description)) }}
+                                                                    {{ strip_tags(html_entity_decode($latest->description ?? '')) }}
                                                                 </p>
                                                                 <div class="d-flex justify-between">
                                                                     <div class="mt-3">

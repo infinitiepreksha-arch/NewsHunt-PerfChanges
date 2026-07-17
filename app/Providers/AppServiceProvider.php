@@ -34,6 +34,47 @@ class AppServiceProvider extends ServiceProvider
     {
         config(['debugbar.capture_ajax' => false]);
         Livewire::component('my-ad-report', MyAdReport::class);
+
+        $incrementBuster = function() {
+            try {
+                if (!\Illuminate\Support\Facades\Cache::has('view_composer_cache_buster')) {
+                    \Illuminate\Support\Facades\Cache::forever('view_composer_cache_buster', 1);
+                } else {
+                    \Illuminate\Support\Facades\Cache::increment('view_composer_cache_buster');
+                }
+            } catch (\Throwable $e) {}
+        };
+
+        // Auto-clear Web Language lists when modified
+        \App\Models\Language::saved(function () use ($incrementBuster) {
+            \Illuminate\Support\Facades\Cache::forget('all_languages_list');
+            $incrementBuster();
+        });
+        \App\Models\Language::deleted(function () use ($incrementBuster) {
+            \Illuminate\Support\Facades\Cache::forget('all_languages_list');
+            $incrementBuster();
+        });
+
+        // Auto-clear News Language lists and default active news language when modified
+        \App\Models\NewsLanguage::saved(function () use ($incrementBuster) {
+            \Illuminate\Support\Facades\Cache::forget('all_news_languages_list');
+            \Illuminate\Support\Facades\Cache::forget('news_language_default_active');
+            $incrementBuster();
+        });
+        \App\Models\NewsLanguage::deleted(function () use ($incrementBuster) {
+            \Illuminate\Support\Facades\Cache::forget('all_news_languages_list');
+            \Illuminate\Support\Facades\Cache::forget('news_language_default_active');
+            $incrementBuster();
+        });
+
+        // Auto-bust View Composer cache when setting is changed
+        \App\Models\Setting::saved(function () use ($incrementBuster) {
+            $incrementBuster();
+        });
+        \App\Models\Setting::deleted(function () use ($incrementBuster) {
+            $incrementBuster();
+        });
+
         View::composer('*', function ($view) {
             $request = request();
             if ($request->attributes->has('shared_view_data')) {
@@ -58,6 +99,15 @@ class AppServiceProvider extends ServiceProvider
                     return $allSettings->get($name);
                 };
 
+                // Cache all languages and news languages forever to avoid repeatedly querying
+                $allLanguages = \Illuminate\Support\Facades\Cache::rememberForever('all_languages_list', function() {
+                    return Language::all();
+                });
+
+                $allNewsLanguages = \Illuminate\Support\Facades\Cache::rememberForever('all_news_languages_list', function() {
+                    return NewsLanguage::all();
+                });
+
                 // Get subscribed language IDs
                 if ($userId) {
                     $subscribedLanguageIds = NewsLanguageSubscriber::where('user_id', $userId)->pluck('news_language_id');
@@ -65,7 +115,9 @@ class AppServiceProvider extends ServiceProvider
                         if ($request->attributes->has('active_language_cache')) {
                             $defaultLanguage = $request->attributes->get('active_language_cache');
                         } else {
-                            $defaultLanguage = NewsLanguage::where('is_active', 1)->first();
+                            $defaultLanguage = \Illuminate\Support\Facades\Cache::rememberForever('news_language_default_active', function() {
+                                return NewsLanguage::where('is_active', 1)->first();
+                            });
                             $request->attributes->set('active_language_cache', $defaultLanguage);
                         }
                         if ($defaultLanguage) {
@@ -84,7 +136,9 @@ class AppServiceProvider extends ServiceProvider
                         if ($request->attributes->has('active_language_cache')) {
                             $defaultActiveLanguage = $request->attributes->get('active_language_cache');
                         } else {
-                            $defaultActiveLanguage = NewsLanguage::where('is_active', 1)->first();
+                            $defaultActiveLanguage = \Illuminate\Support\Facades\Cache::rememberForever('news_language_default_active', function() {
+                                return NewsLanguage::where('is_active', 1)->first();
+                            });
                             $request->attributes->set('active_language_cache', $defaultActiveLanguage);
                         }
                         $subscribedLanguageIds = $defaultActiveLanguage ? collect([$defaultActiveLanguage->id]) : collect();
@@ -97,26 +151,26 @@ class AppServiceProvider extends ServiceProvider
                     $finalLanguageCode = Session::get('admin_locale', config('app.locale'));
                     app()->setLocale($finalLanguageCode);
 
-                    $web_languages = $languages = Language::all();
+                    $web_languages = $languages = $allLanguages;
                     $composerData['languages']         = $languages;
                     $composerData['finalLanguageCode'] = $finalLanguageCode;
                 } elseif (Session::has('web_locale') && Session::get('web_locale') != null) {
                     $finalLanguageCode = Session::get('web_locale');
                     app()->setLocale($finalLanguageCode);
 
-                    $web_languages = Language::all();
+                    $web_languages = $allLanguages;
                     $composerData['web_languages']     = $web_languages;
                     $composerData['finalLanguageCode'] = $finalLanguageCode;
                 } else {
-                    $checklanguageCode = NewsLanguage::find($subscribedLanguageIds)->first();
+                    $checklanguageCode = $allNewsLanguages->whereIn('id', $subscribedLanguageIds)->first();
 
                     if ($checklanguageCode) {
-                        $webLanguage = Language::where('code', $checklanguageCode->code)->first();
+                        $webLanguage = $allLanguages->where('code', $checklanguageCode->code)->first();
                     }
 
                     if (empty($webLanguage)) {
                         $defaultLocale = config('app.locale');
-                        $webLanguage   = Language::where('code', $defaultLocale)->first();
+                        $webLanguage   = $allLanguages->where('code', $defaultLocale)->first();
                     }
 
                     Session::put('web_locale', $webLanguage->code);
@@ -126,7 +180,7 @@ class AppServiceProvider extends ServiceProvider
                     app()->setLocale($webLanguage->code);
 
                     $finalLanguageCode = $webLanguage->code;
-                    $web_languages     = Language::all();
+                    $web_languages     = $allLanguages;
                     $composerData['web_languages']     = $web_languages;
                     $composerData['finalLanguageCode'] = $finalLanguageCode;
                 }
@@ -140,7 +194,7 @@ class AppServiceProvider extends ServiceProvider
                     if ($cachedActiveLang && $cachedActiveLang->id == $firstLangId) {
                         $newsLang = $cachedActiveLang;
                     } else {
-                        $newsLang = NewsLanguage::find($firstLangId);
+                        $newsLang = $allNewsLanguages->where('id', $firstLangId)->first();
                     }
                     if ($newsLang) {
                         $langCode = $newsLang->code ?? 'zxx';
@@ -149,9 +203,10 @@ class AppServiceProvider extends ServiceProvider
                 }
 
                 $subscribedStr = $subscribedLanguageIds->isNotEmpty() ? $subscribedLanguageIds->implode('_') : 'none';
-                $cacheKey = "shared_view_composer_data_" . $finalLanguageCode . "_" . $subscribedStr;
+                $cacheBuster = \Illuminate\Support\Facades\Cache::get('view_composer_cache_buster', 1);
+                $cacheKey = "shared_view_composer_data_" . $finalLanguageCode . "_" . $subscribedStr . "_" . $cacheBuster;
 
-                $cachedComposerData = \Illuminate\Support\Facades\Cache::remember($cacheKey, 600, function () use ($subscribedLanguageIds, $allSettings, $getSetting, $langCode, $dir, $finalLanguageCode, $web_languages) {
+                $cachedComposerData = \Illuminate\Support\Facades\Cache::remember($cacheKey, 600, function () use ($subscribedLanguageIds, $allSettings, $getSetting, $langCode, $dir, $finalLanguageCode, $web_languages, $allNewsLanguages) {
                     $defaultImageSetting = $getSetting('default_image');
                     $defaultImage = $defaultImageSetting ? url('storage/' . $defaultImageSetting->value) : '';
 
@@ -189,9 +244,9 @@ class AppServiceProvider extends ServiceProvider
                                     $query->where('status', 'active');
                                 })
                                     ->orWhereDoesntHave('topic');
-                            })
+                             })
                             ->when($subscribedLanguageIds->isNotEmpty(), function ($q) use ($subscribedLanguageIds) {
-                                $q->whereIn('news_language_id', $subscribedLanguageIds);
+                                $q->whereIn('posts.news_language_id', $subscribedLanguageIds);
                             })
                             ->orderBy('publish_date', 'DESC')
                             ->take(4)
@@ -255,7 +310,7 @@ class AppServiceProvider extends ServiceProvider
                     $channels->prepend((object) $data[0]);
 
                     $socialsettings = $allSettings->map(fn($item) => $item->value);
-                    $news_languages_overwrite = NewsLanguage::where('status', 'active')->get();
+                    $news_languages_overwrite = $allNewsLanguages->where('status', 'active');
                     $news_language_status     = NewsLanguageStatus::getCurrentStatus();
                     $newsletterSettings       = $this->getNewsletterSettings($allSettings);
 

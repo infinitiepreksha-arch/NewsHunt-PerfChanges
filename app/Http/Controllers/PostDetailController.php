@@ -366,9 +366,17 @@ class PostDetailController extends Controller
 
     public function viewCount($post)
     {
-
         $user_id    = Auth::user()->id ?? null;
         $cookieName = 'viewed_post_' . $post->id;
+
+        if ($user_id === null) {
+            // Guest visitor: check only cookie to prevent layout shifts and redundant DB queries
+            if (! Cookie::has($cookieName)) {
+                Cookie::queue($cookieName, true, 21600);
+                $post->increment('view_count');
+            }
+            return $post;
+        }
 
         $viewexist = PostView::where('post_id', $post->id)
             ->where('user_id', $user_id)
@@ -376,28 +384,23 @@ class PostDetailController extends Controller
 
         if (! $viewexist) {
             if (! Cookie::has($cookieName)) {
-                if ($user_id !== null) {
-                    PostView::create([
-                        'post_id' => $post->id,
-                        'user_id' => $user_id,
-                    ]);
-                }
+                PostView::create([
+                    'post_id' => $post->id,
+                    'user_id' => $user_id,
+                ]);
                 Cookie::queue($cookieName, true, 21600);
                 $post->increment('view_count');
                 return $post;
             } else {
-                if ($user_id !== null) {
-                    PostView::create([
-                        'post_id' => $post->id,
-                        'user_id' => $user_id,
-                    ]);
-                }
+                PostView::create([
+                    'post_id' => $post->id,
+                    'user_id' => $user_id,
+                ]);
                 return $post;
             }
         } else {
             return $post;
         }
-
     }
 
 }

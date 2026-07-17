@@ -76,7 +76,7 @@ class FetchRssFeedController extends Controller
             if ($post) {
                 $post->publish_date = Carbon::parse($post->publish_date)->diffForHumans();
                 $post->channel_logo = url(self::STORAGE_PATH . $post->channel_logo);
-                $post->description  = html_entity_decode($post->description);
+                $post->description  = html_entity_decode($post->description ?? '');
 
                 $mainImage = $post->image;
 
