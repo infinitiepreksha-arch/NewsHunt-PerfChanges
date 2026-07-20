@@ -2,8 +2,26 @@
 
 This document is the master entry point for AI coding agents working on the **NewsHunt** codebase (v1.4.9).
 
+Operational workflow, safety guards, and mandatory phase rules are codified in:
+👉 **[.agents/AGENTS.md](file:///.agents/AGENTS.md)**
+
 The complete, end-to-end knowledge base for this repository is codified inside the custom skill:
 👉 **[.agents/skills/newshunt-architecture/SKILL.md](file:///.agents/skills/newshunt-architecture/SKILL.md)**
+
+---
+
+## ⚡ Non-Negotiable Operational Phase Protocol
+
+Every AI agent working on this project MUST strictly follow these 8 execution phases:
+
+1. **Phase 1 (Brainstorming & Discussion):** Discuss options, trade-offs, and align with the user before writing code.
+2. **Phase 2 (Implementation Plan):** Draft an implementation plan (`implementation_plan.md`) detailing proposed changes.
+3. **Phase 3 (User Plan Approval):** **STOP AND WAIT** for explicit user approval before proceeding to code edits.
+4. **Phase 4 (Feature Branching):** Create a new branch (`git checkout -b feature/<feature-name>`) for any change to prevent merge conflicts.
+5. **Phase 5 (Execution & Verification):** Implement minimal production-ready code & verify locally.
+6. **Phase 6 (Code Review):** Present changed files & diffs to the user for review. **WAIT for user ok** before proceeding.
+7. **Phase 7 (History & Tracking):** Append changes to [PROJECT_HISTORY.md](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/PROJECT_HISTORY.md), update [FILE_CHANGES_LOG.md](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/FILE_CHANGES_LOG.md) (code files), and update [.agents/AGENTS_CHANGES_LOG.md](file:///.agents/AGENTS_CHANGES_LOG.md) (agent files).
+8. **Phase 8 (Git Commit Permission):** **NEVER COMMIT OR PUSH WITHOUT EXPLICIT USER PERMISSION.** Always ask before staging or committing.
 
 ---
 
@@ -26,21 +44,3 @@ Refer to the specialized reference documents inside `.agents/skills/newshunt-arc
 | [11_AUTHENTICATION_AND_AUTHORIZATION.md](file:///.agents/skills/newshunt-architecture/references/11_AUTHENTICATION_AND_AUTHORIZATION.md) | Web auth, Firebase Google/Phone callbacks, and Spatie RBAC permission tables. |
 | [12_CHANGE_IMPACT_AND_KNOWN_DEBT.md](file:///.agents/skills/newshunt-architecture/references/12_CHANGE_IMPACT_AND_KNOWN_DEBT.md) | Pre-flight safety checklist for AI subagents, PHP 8.1 compatibility rules & technical debt. |
 | [13_RESPONSIVENESS_CROSS_BROWSER_AND_MOBILE_API_SAFETY.md](file:///.agents/skills/newshunt-architecture/references/13_RESPONSIVENESS_CROSS_BROWSER_AND_MOBILE_API_SAFETY.md) | Cross-device UI responsiveness, browser compatibility & Mobile REST API backward compatibility. |
-
----
-
-## ⚡ Mandatory Working Protocol for AI Agents
-
-1. **Read History & Update Files Log:**
-   * Read [PROJECT_HISTORY.md](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/PROJECT_HISTORY.md) before starting any work.
-   * After completing any task, append task entry to [PROJECT_HISTORY.md](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/PROJECT_HISTORY.md) and update the master go-to table in [FILE_CHANGES_LOG.md](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/FILE_CHANGES_LOG.md).
-   * Report task file count and cumulative unique file count in response turn summaries.
-2. **Preserve Business & Mobile API Compatibility:**
-   * Never alter existing API response key names, types, or Sanctum authorization wrappers under `/api/v1/`.
-3. **Cross-Device Responsiveness:**
-   * Ensure modifications preserve UIkit responsive grid classes, Swiper JS breakpoints, and container heights (`.epaper_css` 300px block) across mobile, tablet, and desktop viewports.
-4. **Request-Scoped Cache Protection:**
-   * Use `request()->attributes` instead of class `static` properties inside Providers/Controllers to avoid memory leaks under Swoole/FrankenPHP.
-5. **Optimized Model Loading & Image Pipeline:**
-   * Use `take(5)` limits or `DB::table()` selections to avoid hydrating large Eloquent collections.
-   * Pass uploaded image files through `FileService::resizeAndCompressUpload()` (max 800px width, 60% quality WebP).
