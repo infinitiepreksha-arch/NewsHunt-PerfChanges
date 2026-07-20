@@ -106,5 +106,7 @@ This document defines the strict, non-negotiable operational workflow that every
 6. **PHP 8.1 Null-Safety:** Null-coalesce variables passed to native string functions (`html_entity_decode($str ?? '')`).
 7. **.agents Folder Branching Rule:** All changes made to the `.agents/` directory (guidelines, skills, knowledge base, agent logs) MUST ALWAYS be committed and pushed to the `main` branch so that all future feature branches automatically inherit the latest metadata and rules.
 8. **Pragmatic & Context-Driven Problem Solving:** Never jump to conclusions or blindly implement textbook patterns. Always analyze solutions through the lens of *this specific project, scenario, data scale, and CodeCanyon maintainability*. If uncertain or facing trade-offs, ask the user to collaborate hand-in-hand.
+9. **Browser & Autonomous Subagent Authorization Rule:** NEVER launch browser subagents (`browser_subagent`) or autonomous subagent modes without explicit user permission. Always ask the user first, explain why agentic mode is necessary, and provide clear step-by-step instructions on how the user can provide the required information directly to move forward without launching subagents. Only launch a subagent if the user is unable to provide the details and explicitly approves starting agentic mode.
+
 
 

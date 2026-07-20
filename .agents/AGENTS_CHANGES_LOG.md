@@ -47,6 +47,15 @@ This log tracks internal AI agent configurations, skills, and documentation file
 
 ---
 
+### 4. [2026-07-20] Browser & Autonomous Subagent Authorization Rule
+* **Description:** Added Rule 9 to `.agents/AGENTS.md` strictly prohibiting launching browser subagents without explicit user permission, requiring clear step-by-step instructions for the user to provide info directly first.
+* **Files Changed:**
+  1. [.agents/AGENTS.md](file:///.agents/AGENTS.md)
+  2. [.agents/AGENTS_CHANGES_LOG.md](file:///.agents/AGENTS_CHANGES_LOG.md)
+
+---
+
+
 ## 📌 Master Index of Agent System Files
 
 **Total Unique Agent Configuration Files:** 19 Files
