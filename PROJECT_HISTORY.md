@@ -769,6 +769,16 @@ Deferred AJAX loading for Navbar Category Dropdowns and homepage sliders (Most R
 * **Logic Changes**:
   * Codified complete 13-document reference architecture covering CodeCanyon domain context, full tech stack dependencies matrix, folder structures, all 116 database migrations, 60+ Eloquent models, full route tables (`web.php` and `api.php`), controller execution call chains, paywall limit verification algorithms, frontend JS/CSS engines, scheduled console tasks, authentication guards, change safety rules, cross-device responsiveness practices, and mobile REST API backward compatibility guarantees.
 
+### [2026-07-20] Git Repository Cleanup & Ignore Rules Update
+
+* **Feature**: Added local IDE settings folders (`.claude/`, `.vscode/`) and temporary test script (`test_route_list.php`) to `.gitignore` and removed `test_route_list.php`.
+* **Files Created/Modified**:
+  * [.gitignore](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/.gitignore) (Added `/.claude`, `/.vscode`, and `/test_route_list.php`)
+  * [test_route_list.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/test_route_list.php) (Deleted)
+* **Logic Changes**:
+  * Cleaned untracked files to ensure `git status` stays 100% clean and local editor configuration folders do not pollute remote repository commits.
+
+
 
 
 

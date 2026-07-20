@@ -181,9 +181,17 @@ This document is the master log of all feature updates, performance optimization
 
 ---
 
+### 17. [2026-07-20] Git Repository Cleanup & Ignore Rules Update
+* **Task Description:** Added `.claude/`, `.vscode/`, and `test_route_list.php` to `.gitignore` and removed the temporary scratch script `test_route_list.php`.
+* **Files Changed:**
+  * [.gitignore](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/.gitignore)
+
+---
+
 ## 📌 Master Go-To Index of All Changed Codebase Files
 
-**Total Unique Codebase Files Modified/Created Till Now:** 41 Files
+**Total Unique Codebase Files Modified/Created Till Now:** 42 Files
+
 
 | # | File Path | Primary Task / Feature | Date Modified |
 |---|---|---|---|
@@ -228,3 +236,5 @@ This document is the master log of all feature updates, performance optimization
 | 39 | [public/front_end/classic/js/app-head-bs.js](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/public/front_end/classic/js/app-head-bs.js) | Static Preloader Configuration | 2026-07-06 |
 | 40 | [public/front_end/classic/js/custom/custom-jquery.js](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/public/front_end/classic/js/custom/custom-jquery.js) | Slider Paginators & JSON Builders | 2026-07-15 |
 | 41 | [public/front_end/classic/js/custom/search-news.js](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/public/front_end/classic/js/custom/search-news.js) | Search AJAX & pushState Paginator | 2026-07-16 |
+| 42 | [.gitignore](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/.gitignore) | Local IDE Folders & Scratch Script Exclusions | 2026-07-20 |
+

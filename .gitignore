@@ -8,3 +8,6 @@
 /storage/framework/testing/*
 /storage/framework/views/*
 /storage/logs/*
+/.claude
+/.vscode
+/test_route_list.php
