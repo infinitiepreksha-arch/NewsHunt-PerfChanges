@@ -80,15 +80,17 @@ This document defines the strict, non-negotiable operational workflow that every
 * **STRICT GUARD:** **WAIT for the user to review the code changes and give permission to proceed.**
 
 ### Phase 7: Automatic History Logging & File Tracking (MANDATORY)
-* **Rule:** At the end of every task execution, the agent MUST automatically update the history and tracking files without requiring prompts from the user.
+* **Rule:** At the end of every task execution, the agent MUST automatically update the history, tracking logs, and feature artifact archives without requiring prompts from the user.
 * **Documentation Architecture:**
   1. **Global Project History ([PROJECT_HISTORY.md](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/PROJECT_HISTORY.md)):** Append a master summary of the task, logic changes, files modified, and verification results.
   2. **Codebase File Index ([FILE_CHANGES_LOG.md](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/FILE_CHANGES_LOG.md)):** Append entry listing modified application files and update the Master Go-To Index Table count.
-  3. **Specialized Deep-Dive Logs (inside `.agents/`):**
+  3. **Feature Artifact Archive Folder (inside `.agents/features/`):**
+     * Save the 3 session planning files (`implementation_plan.md`, `task.md`, `walkthrough.md`) into a dedicated feature folder: `.agents/features/YYYY-MM-DD_<feature_name>/`.
+  4. **Specialized Deep-Dive Logs (inside `.agents/`):**
      * **Performance Optimizations:** If the task involves speed, caching, queries, memory, or Core Web Vitals, append to [.agents/performance_optimization_history.md](file:///.agents/performance_optimization_history.md) using the required format (*Root Cause, Solution & Rationale, Files Modified, Code Comparison Diffs, Impact & Scalability*).
      * **New Features & Functional Updates:** If the task involves a new feature, UI enhancement, or non-performance change, append to [.agents/feature_development_history.md](file:///.agents/feature_development_history.md) using the required format (*Feature Need, Solution & Rationale, Files Modified, Code Comparison Diffs, Impact & Scalability*).
      * **Agent Configuration Changes:** If the task modifies `.agents/` files, append to [.agents/AGENTS_CHANGES_LOG.md](file:///.agents/AGENTS_CHANGES_LOG.md).
-  4. **Turn Summary:** Report task changed file count and total cumulative unique file count in the final turn response.
+  5. **Turn Summary:** Report task changed file count and total cumulative unique file count in the final turn response.
 
 ### Phase 8: Git Commit & Push Authorization
 * **STRICT GUARD:** **NEVER COMMIT OR PUSH WITHOUT EXPLICIT USER PERMISSION.**

@@ -63,6 +63,15 @@ This log tracks internal AI agent configurations, skills, and documentation file
 
 ---
 
+### 6. [2026-07-20] Feature Artifact Archiving Rule Setup
+* **Description:** Updated Phase 7 in `.agents/AGENTS.md` to automatically save the 3 session planning files (`implementation_plan.md`, `task.md`, `walkthrough.md`) into a dedicated folder `.agents/features/YYYY-MM-DD_<feature_name>/` at the end of every task execution.
+* **Files Changed:**
+  1. [.agents/AGENTS.md](file:///.agents/AGENTS.md)
+  2. [.agents/AGENTS_CHANGES_LOG.md](file:///.agents/AGENTS_CHANGES_LOG.md)
+
+---
+
+
 
 
 ## 📌 Master Index of Agent System Files
