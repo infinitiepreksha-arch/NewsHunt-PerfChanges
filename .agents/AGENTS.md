@@ -69,9 +69,10 @@ This document defines the strict, non-negotiable operational workflow that every
 * Draft a detailed implementation plan document (`implementation_plan.md`).
 * **STRICT GUARD:** **STOP AND WAIT for explicit user approval** before making any code edits or running modifying scripts.
 
-### Phase 4: Feature Branching Protocol
-* **Rule:** **ALWAYS create a new git branch** for any new feature, bug fix, or optimization (e.g. `git checkout -b feature/<feature-name>`).
-* **Why:** Keeps `main` stable, makes rollbacks trivial, and prevents git merge conflicts.
+### Phase 4: Prudent Feature Branching Protocol
+* **Rule:** Create a new git branch (`git checkout -b feature/<feature-name>`) when developing new code features, refactoring, or bug fixes where isolation and rollback safety are needed. Do not create branches unnecessarily for routine documentation or minor configuration maintenance.
+* **Why:** Keeps `main` stable, enables trivial rollbacks, and prevents git merge conflicts on codebase modifications.
+
 
 ### Phase 5 & 6: Minimal Code Changes & Code Review
 * Implement minimal, production-ready changes following existing Laravel patterns, `FileService` WebP rules, and `SelectsFields` query projections.
@@ -107,6 +108,8 @@ This document defines the strict, non-negotiable operational workflow that every
 7. **.agents Folder Branching Rule:** All changes made to the `.agents/` directory (guidelines, skills, knowledge base, agent logs) MUST ALWAYS be committed and pushed to the `main` branch so that all future feature branches automatically inherit the latest metadata and rules.
 8. **Pragmatic & Context-Driven Problem Solving:** Never jump to conclusions or blindly implement textbook patterns. Always analyze solutions through the lens of *this specific project, scenario, data scale, and CodeCanyon maintainability*. If uncertain or facing trade-offs, ask the user to collaborate hand-in-hand.
 9. **Browser & Autonomous Subagent Authorization Rule:** NEVER launch browser subagents (`browser_subagent`) or autonomous subagent modes without explicit user permission. Always ask the user first, explain why agentic mode is necessary, and provide clear step-by-step instructions on how the user can provide the required information directly to move forward without launching subagents. Only launch a subagent if the user is unable to provide the details and explicitly approves starting agentic mode.
+10. **Code Reusability & Scalability:** Always write modular, reusable, and scalable code that integrates seamlessly with existing NewsHunt architectural patterns (e.g. `SelectsFields` trait, `FileService`, `CachingService`, Blade partials, and global helpers) to keep the codebase clean and maintainable.
+
 
 
 

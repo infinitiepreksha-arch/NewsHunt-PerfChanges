@@ -55,6 +55,15 @@ This log tracks internal AI agent configurations, skills, and documentation file
 
 ---
 
+### 5. [2026-07-20] Feature Branching Refinement & Code Reusability Rule
+* **Description:** Refined Phase 4 in `.agents/AGENTS.md` to create feature branches prudently as needed for rollback safety without creating unnecessary branches. Added Rule 10 mandating reusable, scalable code design aligned with existing NewsHunt architecture.
+* **Files Changed:**
+  1. [.agents/AGENTS.md](file:///.agents/AGENTS.md)
+  2. [.agents/AGENTS_CHANGES_LOG.md](file:///.agents/AGENTS_CHANGES_LOG.md)
+
+---
+
+
 
 ## 📌 Master Index of Agent System Files
 
