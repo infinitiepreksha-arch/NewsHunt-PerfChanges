@@ -11,23 +11,28 @@ class TopicFrontController extends Controller
     public function index()
     {
         $perPage = 16;
+        $request = request();
 
-        $userId = Auth::user()->id ?? 0;
-
-        if ($userId) {
-            $subscribedLanguageIds = NewsLanguageSubscriber::where('user_id', $userId)->pluck('news_language_id');
+        if ($request->attributes->has('subscribed_language_ids')) {
+            $subscribedLanguageIds = $request->attributes->get('subscribed_language_ids');
         } else {
-            $sessionLanguageId = session('selected_news_language');
-            if ($sessionLanguageId) {
-                // If user selected a language, use it (even if not active)
-                $subscribedLanguageIds = collect([$sessionLanguageId]);
+            $userId = Auth::user()->id ?? 0;
+            if ($userId) {
+                $subscribedLanguageIds = NewsLanguageSubscriber::where('user_id', $userId)->pluck('news_language_id');
             } else {
-                // If not selected, use the first active language
-                $defaultActiveLanguage = NewsLanguage::where('is_active', 1)->first();
-                $subscribedLanguageIds = $defaultActiveLanguage ? collect([$defaultActiveLanguage->id]) : collect();
+                $sessionLanguageId = session('selected_news_language');
+                if ($sessionLanguageId) {
+                    $subscribedLanguageIds = collect([$sessionLanguageId]);
+                } else {
+                    $defaultActiveLanguage = NewsLanguage::where('is_active', 1)->first();
+                    $subscribedLanguageIds = $defaultActiveLanguage ? collect([$defaultActiveLanguage->id]) : collect();
+                }
             }
+            $request->attributes->set('subscribed_language_ids', $subscribedLanguageIds);
         }
-        $front_topics = Topic::where('status', 'active')
+
+        $front_topics = Topic::select('id', 'name', 'slug', 'logo', 'categorie_order', 'status')
+            ->where('status', 'active')
             ->whereHas('posts', function ($query) use ($subscribedLanguageIds) {
                 if ($subscribedLanguageIds->isNotEmpty()) {
                     $query->whereIn('news_language_id', $subscribedLanguageIds);

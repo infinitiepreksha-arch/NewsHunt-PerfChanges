@@ -8,12 +8,35 @@ use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 
+if (! function_exists('versioned_asset')) {
+    function versioned_asset($path)
+    {
+        try {
+            $fullPath = public_path($path);
+            if (File::exists($fullPath)) {
+                return asset($path) . '?v=' . File::lastModified($fullPath);
+            }
+        } catch (Throwable $e) {
+            // Fallback safely to standard asset helper
+        }
+        return asset($path);
+    }
+}
+
 if (! function_exists('getTheme')) {
     function getTheme()
     {
         try {
+            $request = request();
+            if ($request && $request->attributes->has('cached_theme_slug')) {
+                return $request->attributes->get('cached_theme_slug');
+            }
             $themeData = Theme::select('slug')->where('is_default', '1')->first();
-            return optional($themeData)->slug ?? 'classic';
+            $slug = optional($themeData)->slug ?? 'classic';
+            if ($request) {
+                $request->attributes->set('cached_theme_slug', $slug);
+            }
+            return $slug;
         } catch (Throwable $e) {
             return "";
         }
