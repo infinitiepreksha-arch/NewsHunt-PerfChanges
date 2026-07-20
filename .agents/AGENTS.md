@@ -61,8 +61,9 @@ This document defines the strict, non-negotiable operational workflow that every
 
 ### Phase 1: Detailed Brainstorming & Discussion
 * Before taking any action or writing code, initiate a brainstorming session.
-* Present potential approaches, trade-offs, performance implications, cross-device impacts, and CodeCanyon maintenance considerations.
-* Exchange feedback until aligned on the best strategy for the NewsHunt project.
+* **Pragmatic Analysis (No Blind "Textbook" Best Practices):** Do not blindly apply generic or textbook "best practices." Evaluate solutions based on *this specific project's scale, scenario, and real-world behavior* (e.g. a simple linear search or in-memory array operation might be far superior to an over-engineered index or complex cache for small datasets).
+* Explore all edge cases and scenarios. If stuck, uncertain, or weighing trade-offs, ask the user directly—work hand-in-hand to find the best fit for NewsHunt.
+* Exchange feedback until fully aligned on the best strategy before drafting the plan.
 
 ### Phase 2 & 3: Implementation Plan & Explicit Approval
 * Draft a detailed implementation plan document (`implementation_plan.md`).
@@ -101,4 +102,6 @@ This document defines the strict, non-negotiable operational workflow that every
 5. **WebP Compression Pipeline:** Pass uploaded images through `FileService::resizeAndCompressUpload()`.
 6. **PHP 8.1 Null-Safety:** Null-coalesce variables passed to native string functions (`html_entity_decode($str ?? '')`).
 7. **.agents Folder Branching Rule:** All changes made to the `.agents/` directory (guidelines, skills, knowledge base, agent logs) MUST ALWAYS be committed and pushed to the `main` branch so that all future feature branches automatically inherit the latest metadata and rules.
+8. **Pragmatic & Context-Driven Problem Solving:** Never jump to conclusions or blindly implement textbook patterns. Always analyze solutions through the lens of *this specific project, scenario, data scale, and CodeCanyon maintainability*. If uncertain or facing trade-offs, ask the user to collaborate hand-in-hand.
+
 

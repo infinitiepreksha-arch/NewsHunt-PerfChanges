@@ -29,11 +29,12 @@ This log tracks internal AI agent configurations, skills, and documentation file
 ---
 
 ### 2. [2026-07-20] Workspace Operational Protocol & Workflow Setup (`.agents/AGENTS.md`)
-* **Description:** Created `.agents/AGENTS.md` defining strict 8-phase workflow rules: Brainstorming → Implementation Plan → User Plan Approval → Feature Branching → Execution → Code Review → Tracking → Git Commit Authorization (Never commit without user permission). Added rule specifying that all `.agents/` folder modifications must always be committed and pushed to the `main` branch.
+* **Description:** Created `.agents/AGENTS.md` defining strict 8-phase workflow rules: Brainstorming → Implementation Plan → User Plan Approval → Feature Branching → Execution → Code Review → Tracking → Git Commit Authorization (Never commit without user permission). Added rules for `.agents/` `main` branch commits and pragmatic, context-driven problem-solving (avoiding textbook over-engineering).
 * **Files Changed:**
   1. [.agents/AGENTS.md](file:///.agents/AGENTS.md)
   2. [.agents/agent_instruction.md](file:///.agents/agent_instruction.md)
   3. [.agents/AGENTS_CHANGES_LOG.md](file:///.agents/AGENTS_CHANGES_LOG.md)
+
 
 
 ---
