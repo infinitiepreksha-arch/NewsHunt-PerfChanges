@@ -188,9 +188,18 @@ This document is the master log of all feature updates, performance optimization
 
 ---
 
+### 18. [2026-07-20] Phase 1.1: Topic & Category Pages Query & Model Performance Optimization
+* **Task Description:** Optimized query count and Eloquent model hydration overhead on Topic Directory (`/topics`) and Topic News Feed (`/topics/{slug}`) pages. Reused request attribute subscriber language IDs, eliminated 146 Setting model hydrations, added selective column selection, added `versioned_asset()` helper, and cached `getTheme()` slug in request attributes.
+* **Files Changed:**
+  * [app/Http/Controllers/TopicFrontController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/TopicFrontController.php)
+  * [app/Http/Controllers/CategoryController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/CategoryController.php)
+  * [app/Helpers/helper.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Helpers/helper.php)
+
+---
+
 ## 📌 Master Go-To Index of All Changed Codebase Files
 
-**Total Unique Codebase Files Modified/Created Till Now:** 42 Files
+**Total Unique Codebase Files Modified/Created Till Now:** 44 Files
 
 
 | # | File Path | Primary Task / Feature | Date Modified |
@@ -206,35 +215,38 @@ This document is the master log of all feature updates, performance optimization
 | 9 | [app/Http/Controllers/HomeController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/HomeController.php) | Homepage Feed Shuffling & Deduplication | 2026-07-15 |
 | 10 | [app/Http/Controllers/PostDetailController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/PostDetailController.php) | Post Detail Page Query Optimization | 2026-07-17 |
 | 11 | [app/Http/Controllers/SearchPostController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/SearchPostController.php) | Multi-Table Subquery Union Search | 2026-07-16 |
-| 12 | [app/Http/Controllers/AdminControllers/PostController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/AdminControllers/PostController.php) | WebP Image Upload Compression | 2026-07-10 |
-| 13 | [app/Http/Controllers/AdminControllers/AudioPostAdminController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/AdminControllers/AudioPostAdminController.php) | WebP Uploads & Constants Cleanups | 2026-07-10 |
-| 14 | [app/Http/Controllers/AdminControllers/VideoAdminController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/AdminControllers/VideoAdminController.php) | WebP Image Upload Compression | 2026-07-10 |
-| 15 | [app/Http/Controllers/AdminControllers/NewsLanguageController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/AdminControllers/NewsLanguageController.php) | WebP Flag Compression | 2026-07-11 |
-| 16 | [app/Http/Controllers/AdminControllers/LogoSettingController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/AdminControllers/LogoSettingController.php) | WebP Logo Upload Compression | 2026-07-11 |
-| 17 | [app/Http/Controllers/AdminControllers/SettingController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/AdminControllers/SettingController.php) | WebP Setting Image Compression | 2026-07-11 |
-| 18 | [app/Http/Controllers/AdminControllers/TopicController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/AdminControllers/TopicController.php) | WebP Category Image Compression | 2026-07-11 |
-| 19 | [app/Http/Controllers/AdminControllers/ChannelController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/AdminControllers/ChannelController.php) | WebP Channel Logo Compression | 2026-07-11 |
-| 20 | [app/Http/Controllers/AdminControllers/LanguageController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/AdminControllers/LanguageController.php) | Flag Image Resizing & WebP | 2026-07-16 |
-| 21 | [app/Http/Controllers/AdminControllers/NotificationController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/AdminControllers/NotificationController.php) | Notification Image WebP Support | 2026-07-11 |
-| 22 | [app/Http/Controllers/Apis/BookmarkController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/Apis/BookmarkController.php) | PHP 8.1 Null-Safety Decoding | 2026-07-17 |
-| 23 | [app/Http/Controllers/Apis/FetchRssFeedController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/Apis/FetchRssFeedController.php) | PHP 8.1 Null-Safety Decoding | 2026-07-17 |
-| 24 | [app/Console/Commands/CompressExistingImages.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Console/Commands/CompressExistingImages.php) | Artisan In-Place WebP Converter | 2026-07-11 |
-| 25 | [resources/views/admin/layouts/app.blade.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/resources/views/admin/layouts/app.blade.php) | Conditional Lottie Script Deferral | 2026-07-10 |
-| 26 | [resources/views/front_end/classic/layout/main.blade.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/resources/views/front_end/classic/layout/main.blade.php) | Preloader & IntersectionObserver | 2026-07-16 |
-| 27 | [resources/views/front_end/classic/layout/header.blade.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/resources/views/front_end/classic/layout/header.blade.php) | Flag Images Deferred Loading | 2026-07-16 |
-| 28 | [resources/views/front_end/classic/layout/style.blade.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/resources/views/front_end/classic/layout/style.blade.php) | Versioned Asset Links | 2026-07-09 |
-| 29 | [resources/views/front_end/classic/layout/script.blade.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/resources/views/front_end/classic/layout/script.blade.php) | Script Load Order & De-duplication | 2026-07-13 |
-| 30 | [resources/views/front_end/classic/pages/index.blade.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/resources/views/front_end/classic/pages/index.blade.php) | LCP Prioritization & E-Newspaper CLS | 2026-07-17 |
-| 31 | [resources/views/front_end/classic/pages/search-result.blade.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/resources/views/front_end/classic/pages/search-result.blade.php) | Search Filter Grid View | 2026-07-16 |
-| 32 | [resources/views/front_end/classic/pages/partials/topic_dropdown_posts.blade.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/resources/views/front_end/classic/pages/partials/topic_dropdown_posts.blade.php) | Navbar Dropdown Post Partial | 2026-07-14 |
-| 33 | [resources/views/front_end/classic/pages/partials/most_read_slides.blade.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/resources/views/front_end/classic/pages/partials/most_read_slides.blade.php) | Most Read Slider Partial | 2026-07-15 |
-| 34 | [resources/views/front_end/classic/pages/partials/web_story_slides.blade.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/resources/views/front_end/classic/pages/partials/web_story_slides.blade.php) | Web Story Slider Partial | 2026-07-15 |
-| 35 | [resources/views/front_end/classic/pages/partials/top_posts_slides.blade.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/resources/views/front_end/classic/pages/partials/top_posts_slides.blade.php) | Top Posts Carousel Partial | 2026-07-16 |
-| 36 | [resources/views/front_end/classic/pages/partials/followed_channels_slides.blade.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/resources/views/front_end/classic/pages/partials/followed_channels_slides.blade.php) | Followed Channels Slider Partial | 2026-07-15 |
-| 37 | [resources/views/front_end/classic/pages/partials/search_result_posts.blade.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/resources/views/front_end/classic/pages/partials/search_result_posts.blade.php) | Search Results Grid Partial | 2026-07-16 |
-| 38 | [public/front_end/classic/css/custom.css](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/public/front_end/classic/css/custom.css) | `.epaper_css` CLS Fix & Swiper CSS | 2026-07-16 |
-| 39 | [public/front_end/classic/js/app-head-bs.js](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/public/front_end/classic/js/app-head-bs.js) | Static Preloader Configuration | 2026-07-06 |
-| 40 | [public/front_end/classic/js/custom/custom-jquery.js](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/public/front_end/classic/js/custom/custom-jquery.js) | Slider Paginators & JSON Builders | 2026-07-15 |
-| 41 | [public/front_end/classic/js/custom/search-news.js](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/public/front_end/classic/js/custom/search-news.js) | Search AJAX & pushState Paginator | 2026-07-16 |
-| 42 | [.gitignore](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/.gitignore) | Local IDE Folders & Scratch Script Exclusions | 2026-07-20 |
+| 12 | [app/Http/Controllers/CategoryController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/CategoryController.php) | Topic Post Query & Setting Optimization | 2026-07-20 |
+| 13 | [app/Http/Controllers/TopicFrontController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/TopicFrontController.php) | Topic Grid Query Optimization | 2026-07-20 |
+| 14 | [app/Http/Controllers/AdminControllers/PostController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/AdminControllers/PostController.php) | WebP Image Upload Compression | 2026-07-10 |
+| 15 | [app/Http/Controllers/AdminControllers/AudioPostAdminController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/AdminControllers/AudioPostAdminController.php) | WebP Uploads & Constants Cleanups | 2026-07-10 |
+| 16 | [app/Http/Controllers/AdminControllers/VideoAdminController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/AdminControllers/VideoAdminController.php) | WebP Image Upload Compression | 2026-07-10 |
+| 17 | [app/Http/Controllers/AdminControllers/NewsLanguageController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/AdminControllers/NewsLanguageController.php) | WebP Flag Compression | 2026-07-11 |
+| 18 | [app/Http/Controllers/AdminControllers/LogoSettingController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/AdminControllers/LogoSettingController.php) | WebP Logo Upload Compression | 2026-07-11 |
+| 19 | [app/Http/Controllers/AdminControllers/SettingController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/AdminControllers/SettingController.php) | WebP Setting Image Compression | 2026-07-11 |
+| 20 | [app/Http/Controllers/AdminControllers/TopicController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/AdminControllers/TopicController.php) | WebP Category Image Compression | 2026-07-11 |
+| 21 | [app/Http/Controllers/AdminControllers/ChannelController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/AdminControllers/ChannelController.php) | WebP Channel Logo Compression | 2026-07-11 |
+| 22 | [app/Http/Controllers/AdminControllers/LanguageController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/AdminControllers/LanguageController.php) | Flag Image Resizing & WebP | 2026-07-16 |
+| 23 | [app/Http/Controllers/AdminControllers/NotificationController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/AdminControllers/NotificationController.php) | Notification Image WebP Support | 2026-07-11 |
+| 24 | [app/Http/Controllers/Apis/BookmarkController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/Apis/BookmarkController.php) | PHP 8.1 Null-Safety Decoding | 2026-07-17 |
+| 25 | [app/Http/Controllers/Apis/FetchRssFeedController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/Apis/FetchRssFeedController.php) | PHP 8.1 Null-Safety Decoding | 2026-07-17 |
+| 26 | [app/Console/Commands/CompressExistingImages.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Console/Commands/CompressExistingImages.php) | Artisan In-Place WebP Converter | 2026-07-11 |
+| 27 | [resources/views/admin/layouts/app.blade.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/resources/views/admin/layouts/app.blade.php) | Conditional Lottie Script Deferral | 2026-07-10 |
+| 28 | [resources/views/front_end/classic/layout/main.blade.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/resources/views/front_end/classic/layout/main.blade.php) | Preloader & IntersectionObserver | 2026-07-16 |
+| 29 | [resources/views/front_end/classic/layout/header.blade.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/resources/views/front_end/classic/layout/header.blade.php) | Flag Images Deferred Loading | 2026-07-16 |
+| 30 | [resources/views/front_end/classic/layout/style.blade.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/resources/views/front_end/classic/layout/style.blade.php) | Versioned Asset Links | 2026-07-09 |
+| 31 | [resources/views/front_end/classic/layout/script.blade.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/resources/views/front_end/classic/layout/script.blade.php) | Script Load Order & De-duplication | 2026-07-13 |
+| 32 | [resources/views/front_end/classic/pages/index.blade.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/resources/views/front_end/classic/pages/index.blade.php) | LCP Prioritization & E-Newspaper CLS | 2026-07-17 |
+| 33 | [resources/views/front_end/classic/pages/search-result.blade.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/resources/views/front_end/classic/pages/search-result.blade.php) | Search Filter Grid View | 2026-07-16 |
+| 34 | [resources/views/front_end/classic/pages/partials/topic_dropdown_posts.blade.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/resources/views/front_end/classic/pages/partials/topic_dropdown_posts.blade.php) | Navbar Dropdown Post Partial | 2026-07-14 |
+| 35 | [resources/views/front_end/classic/pages/partials/most_read_slides.blade.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/resources/views/front_end/classic/pages/partials/most_read_slides.blade.php) | Most Read Slider Partial | 2026-07-15 |
+| 36 | [resources/views/front_end/classic/pages/partials/web_story_slides.blade.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/resources/views/front_end/classic/pages/partials/web_story_slides.blade.php) | Web Story Slider Partial | 2026-07-15 |
+| 37 | [resources/views/front_end/classic/pages/partials/top_posts_slides.blade.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/resources/views/front_end/classic/pages/partials/top_posts_slides.blade.php) | Top Posts Carousel Partial | 2026-07-16 |
+| 38 | [resources/views/front_end/classic/pages/partials/followed_channels_slides.blade.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/resources/views/front_end/classic/pages/partials/followed_channels_slides.blade.php) | Followed Channels Slider Partial | 2026-07-15 |
+| 39 | [resources/views/front_end/classic/pages/partials/search_result_posts.blade.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/resources/views/front_end/classic/pages/partials/search_result_posts.blade.php) | Search Results Grid Partial | 2026-07-16 |
+| 40 | [public/front_end/classic/css/custom.css](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/public/front_end/classic/css/custom.css) | `.epaper_css` CLS Fix & Swiper CSS | 2026-07-16 |
+| 41 | [public/front_end/classic/js/app-head-bs.js](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/public/front_end/classic/js/app-head-bs.js) | Static Preloader Configuration | 2026-07-06 |
+| 42 | [public/front_end/classic/js/custom/custom-jquery.js](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/public/front_end/classic/js/custom/custom-jquery.js) | Slider Paginators & JSON Builders | 2026-07-15 |
+| 43 | [public/front_end/classic/js/custom/search-news.js](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/public/front_end/classic/js/custom/search-news.js) | Search AJAX & pushState Paginator | 2026-07-16 |
+| 44 | [.gitignore](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/.gitignore) | Local IDE Folders & Scratch Script Exclusions | 2026-07-20 |
+
 

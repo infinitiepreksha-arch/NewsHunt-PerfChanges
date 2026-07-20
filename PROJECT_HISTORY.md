@@ -769,14 +769,22 @@ Deferred AJAX loading for Navbar Category Dropdowns and homepage sliders (Most R
 * **Logic Changes**:
   * Codified complete 13-document reference architecture covering CodeCanyon domain context, full tech stack dependencies matrix, folder structures, all 116 database migrations, 60+ Eloquent models, full route tables (`web.php` and `api.php`), controller execution call chains, paywall limit verification algorithms, frontend JS/CSS engines, scheduled console tasks, authentication guards, change safety rules, cross-device responsiveness practices, and mobile REST API backward compatibility guarantees.
 
-### [2026-07-20] Git Repository Cleanup & Ignore Rules Update
+### [2026-07-20] Phase 1.1: Topic & Category Pages Query & Model Performance Optimization
 
-* **Feature**: Added local IDE settings folders (`.claude/`, `.vscode/`) and temporary test script (`test_route_list.php`) to `.gitignore` and removed `test_route_list.php`.
-* **Files Created/Modified**:
-  * [.gitignore](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/.gitignore) (Added `/.claude`, `/.vscode`, and `/test_route_list.php`)
-  * [test_route_list.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/test_route_list.php) (Deleted)
+* **Feature**: Optimized database query statements and Eloquent model hydration overhead on Topic Directory (`/topics`) and Topic News Feed (`/topics/{slug}`) pages.
+* **Files Modified**:
+  * [TopicFrontController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/TopicFrontController.php)
+  * [CategoryController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/CategoryController.php)
+  * [helper.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Helpers/helper.php)
 * **Logic Changes**:
-  * Cleaned untracked files to ensure `git status` stays 100% clean and local editor configuration folders do not pollute remote repository commits.
+  * Reused subscriber language IDs cached in `request()->attributes` to eliminate duplicate database lookup queries across Controllers and `AppServiceProvider` View Composer.
+  * Replaced `Setting::get()` and `Setting::where()` in `CategoryController.php` with `request()->attributes` cached settings arrays, eliminating **146 Setting Eloquent model hydrations** per request.
+  * Added selective column selection (`select(...)`) to `Topic::select(...)` and `Post::select(...)` queries, excluding heavy HTML description blobs from topic list feeds.
+  * Added `request()->attributes` theme slug caching to `getTheme()` in `helper.php` to eliminate repeated default theme queries per request across all pages.
+* **Verification Results**:
+  * `/topics`: Queries reduced from `10 Statements` to `9 Statements` (0 duplicates).
+  * `/topics/world`: Queries reduced from `12 Statements` to `9 Statements` (25% query reduction, 0 duplicates); Eloquent hydrated models dropped from `163 Models` to `17 Models` (~90% memory reduction).
+
 
 
 

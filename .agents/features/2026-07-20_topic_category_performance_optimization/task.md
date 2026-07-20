@@ -1,0 +1,6 @@
+- `[x]` Create feature branch `feature/topics-category-performance`
+- `[x]` Optimize `TopicFrontController.php` (Request-scoped attribute caching for subscriber languages & selective columns)
+- `[x]` Optimize `CategoryController.php` (Eliminated 146 Setting model hydrations & reused request attribute subscriber languages)
+- `[x]` Verify PHP syntax correctness
+- `[x]` Perform self-verification & review code changes
+- `[x]` Update history logs & feature artifacts
