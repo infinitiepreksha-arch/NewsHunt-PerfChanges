@@ -746,5 +746,29 @@ Deferred AJAX loading for Navbar Category Dropdowns and homepage sliders (Most R
   * Expanded the guidelines to include database model definitions, subscription limit and increment validations, homepage feed consolidation and shuffling, payment gateway checkout routines, RSS ingestion automation, web stories cookie-based tracking, and custom advertiser ad operations.
   * Added detailed technical stack breakdowns (Laravel, Sanctum, Spatie, jQuery, UIKit, SwiperJS), frontend script mappings (custom-jquery.js, search-news.js), CSS layout guidelines (CLS heights, Swiper anti-shift templates), and visual sequence data flow diagrams.
 
+### [2026-07-20] Enterprise Architecture Knowledge Base Skill & File Changes Log Setup
+
+* **Feature**: Built a 13-part architecture knowledge base skill inside `.agents/skills/newshunt-architecture/` and created the project master index tracker `FILE_CHANGES_LOG.md`.
+* **Files Created/Modified**:
+  * [FILE_CHANGES_LOG.md](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/FILE_CHANGES_LOG.md) (Created master file changes index log and running tally table)
+  * [.agents/skills/newshunt-architecture/SKILL.md](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/.agents/skills/newshunt-architecture/SKILL.md) (Created master skill entry file)
+  * [.agents/skills/newshunt-architecture/references/01_PROJECT_OVERVIEW.md](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/.agents/skills/newshunt-architecture/references/01_PROJECT_OVERVIEW.md)
+  * [.agents/skills/newshunt-architecture/references/02_TECH_STACK_AND_DEPENDENCIES.md](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/.agents/skills/newshunt-architecture/references/02_TECH_STACK_AND_DEPENDENCIES.md)
+  * [.agents/skills/newshunt-architecture/references/03_FOLDER_STRUCTURE_AND_CONVENTIONS.md](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/.agents/skills/newshunt-architecture/references/03_FOLDER_STRUCTURE_AND_CONVENTIONS.md)
+  * [.agents/skills/newshunt-architecture/references/04_DATABASE_SCHEMA_AND_MIGRATIONS.md](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/.agents/skills/newshunt-architecture/references/04_DATABASE_SCHEMA_AND_MIGRATIONS.md)
+  * [.agents/skills/newshunt-architecture/references/05_MODELS_AND_RELATIONS.md](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/.agents/skills/newshunt-architecture/references/05_MODELS_AND_RELATIONS.md)
+  * [.agents/skills/newshunt-architecture/references/06_ROUTES_MIDDLEWARE_AND_APIS.md](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/.agents/skills/newshunt-architecture/references/06_ROUTES_MIDDLEWARE_AND_APIS.md)
+  * [.agents/skills/newshunt-architecture/references/07_CONTROLLERS_AND_CALL_CHAINS.md](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/.agents/skills/newshunt-architecture/references/07_CONTROLLERS_AND_CALL_CHAINS.md)
+  * [.agents/skills/newshunt-architecture/references/08_BUSINESS_RULES_AND_PAYWALLS.md](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/.agents/skills/newshunt-architecture/references/08_BUSINESS_RULES_AND_PAYWALLS.md)
+  * [.agents/skills/newshunt-architecture/references/09_FRONTEND_ASSETS_AND_BLADE.md](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/.agents/skills/newshunt-architecture/references/09_FRONTEND_ASSETS_AND_BLADE.md)
+  * [.agents/skills/newshunt-architecture/references/10_EVENTS_QUEUES_AND_SCHEDULES.md](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/.agents/skills/newshunt-architecture/references/10_EVENTS_QUEUES_AND_SCHEDULES.md)
+  * [.agents/skills/newshunt-architecture/references/11_AUTHENTICATION_AND_AUTHORIZATION.md](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/.agents/skills/newshunt-architecture/references/11_AUTHENTICATION_AND_AUTHORIZATION.md)
+  * [.agents/skills/newshunt-architecture/references/12_CHANGE_IMPACT_AND_KNOWN_DEBT.md](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/.agents/skills/newshunt-architecture/references/12_CHANGE_IMPACT_AND_KNOWN_DEBT.md)
+  * [.agents/skills/newshunt-architecture/references/13_RESPONSIVENESS_CROSS_BROWSER_AND_MOBILE_API_SAFETY.md](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/.agents/skills/newshunt-architecture/references/13_RESPONSIVENESS_CROSS_BROWSER_AND_MOBILE_API_SAFETY.md)
+  * [.agents/agent_instruction.md](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/.agents/agent_instruction.md) (Updated master pointer table)
+* **Logic Changes**:
+  * Codified complete 13-document reference architecture covering CodeCanyon domain context, full tech stack dependencies matrix, folder structures, all 116 database migrations, 60+ Eloquent models, full route tables (`web.php` and `api.php`), controller execution call chains, paywall limit verification algorithms, frontend JS/CSS engines, scheduled console tasks, authentication guards, change safety rules, cross-device responsiveness practices, and mobile REST API backward compatibility guarantees.
+
+
 
 
