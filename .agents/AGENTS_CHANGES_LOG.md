@@ -35,13 +35,22 @@ This log tracks internal AI agent configurations, skills, and documentation file
   2. [.agents/agent_instruction.md](file:///.agents/agent_instruction.md)
   3. [.agents/AGENTS_CHANGES_LOG.md](file:///.agents/AGENTS_CHANGES_LOG.md)
 
+---
 
+### 3. [2026-07-20] Specialized History Logs Setup (`.agents/`)
+* **Description:** Relocated restored `performance_optimization_history.md` into `.agents/`, created `.agents/feature_development_history.md` for non-performance features, and updated Phase 7 in `.agents/AGENTS.md` to mandate automatic history logging across all 3 tiers.
+* **Files Changed:**
+  1. [.agents/performance_optimization_history.md](file:///.agents/performance_optimization_history.md)
+  2. [.agents/feature_development_history.md](file:///.agents/feature_development_history.md)
+  3. [.agents/AGENTS.md](file:///.agents/AGENTS.md)
+  4. [.agents/AGENTS_CHANGES_LOG.md](file:///.agents/AGENTS_CHANGES_LOG.md)
 
 ---
 
 ## 📌 Master Index of Agent System Files
 
-**Total Unique Agent Configuration Files:** 17 Files
+**Total Unique Agent Configuration Files:** 19 Files
+
 
 | # | File Path | Scope & Purpose | Date |
 |---|---|---|---|
@@ -62,3 +71,6 @@ This log tracks internal AI agent configurations, skills, and documentation file
 | 15 | [.agents/skills/newshunt-architecture/references/11_AUTHENTICATION_AND_AUTHORIZATION.md](file:///.agents/skills/newshunt-architecture/references/11_AUTHENTICATION_AND_AUTHORIZATION.md) | Web, Sanctum & Firebase Auth | 2026-07-20 |
 | 16 | [.agents/skills/newshunt-architecture/references/12_CHANGE_IMPACT_AND_KNOWN_DEBT.md](file:///.agents/skills/newshunt-architecture/references/12_CHANGE_IMPACT_AND_KNOWN_DEBT.md) | AI Safety Rules & Known Debt | 2026-07-20 |
 | 17 | [.agents/skills/newshunt-architecture/references/13_RESPONSIVENESS_CROSS_BROWSER_AND_MOBILE_API_SAFETY.md](file:///.agents/skills/newshunt-architecture/references/13_RESPONSIVENESS_CROSS_BROWSER_AND_MOBILE_API_SAFETY.md) | UI Responsiveness & Mobile API Safety | 2026-07-20 |
+| 18 | [.agents/performance_optimization_history.md](file:///.agents/performance_optimization_history.md) | Deep-Dive Performance & Speed History Log | 2026-07-20 |
+| 19 | [.agents/feature_development_history.md](file:///.agents/feature_development_history.md) | Deep-Dive New Features & Enhancements Log | 2026-07-20 |
+
