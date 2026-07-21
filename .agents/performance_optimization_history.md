@@ -880,7 +880,57 @@ Even after Phase 1, the post page still executed duplicate subscriber languages 
 -        $post_lable = Setting::get()->where('name', 'news_lable_place_holder')->first();
 ```
 
+---
+
+## 19. Channels Directory & Single Channel Profile Optimization
+
+### Root Cause
+1. **Setting Model Hydration & Duplicate Query**: `ChannelFrontController.php` executed `Setting::where('name', 'default_image')->first()`, triggering a separate SQL query and instantiating 1 `Setting` Eloquent model. `AppServiceProvider` executed the `settings` query again.
+2. **Duplicate News Language Subscriber Lookups**: `NewsLanguageSubscriber::where('user_id', $userId)` executed in `ChannelFrontController` and again in `AppServiceProvider`.
+3. **Redundant Post Count Query**: On `/channels/{slug}`, line 69 executed `select count(*) as aggregate from posts...` to compute `$post_count`. The paginator on line 63 already executed `count(*)` and provided `$getChannelPosts->total()`.
+4. **Guest Visitor Subquery Overhead**: On `/channels`, `withCount(['subscribers as is_followed' => ...])` executed a subquery (`where user_id = ''`) for unauthenticated guest visitors.
+5. **Separate Subscriber Query**: On `/channels/{slug}`, `ChannelSubscriber::where('channel_id', ...)` executed a standalone SQL query.
+
+### Solution & Rationale
+1. **Request-Scoped Settings Cache**: Replaced `Setting::where(...)` with `$request->attributes` cached settings collection (`$settingsCache->get('default_image')->value ?? null`), returning stdClass objects with zero Setting model hydrations.
+2. **Request-Scoped Language Cache**: Stored resolved `$subscribedLanguageIds` in `$request->attributes->set('subscribed_language_ids', ...)` for reuse by `AppServiceProvider`.
+3. **Paginator Total Usage**: Replaced `Post::where(...)->count()` with `$post_count = $getChannelPosts->total()`.
+4. **Guest Bypass & Subquery Integration**: Wrapped `withCount(['subscribers as is_followed' => ...])` on `/channels` in a `$user` check and integrated `subscribers as is_followed` `withCount` directly into the `$channelData` query on `/channels/{slug}`.
+5. **Selective Column Selection**: Added `Channel::select('id', 'name', 'slug', 'logo', 'description', 'follow_count', 'status')` and added `'channels.slug as channel_slug'` to `Post::select(...)`.
+
+### Files Modified
+* [ChannelFrontController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/ChannelFrontController.php)
+
+### Code Comparison
+```diff
+--- [ORIGINAL CODE - ChannelFrontController.php]
++++ [OPTIMIZED CODE - ChannelFrontController.php]
+@@ -21,14 +21,27 @@
+-        $defaultImage = Setting::where('name', 'default_image')->first()->value ?? null;
+-        if ($userId) {
+-            $subscribedLanguageIds = NewsLanguageSubscriber::where('user_id', $userId)->pluck('news_language_id');
+-        } else { ... }
++        if ($request->attributes->has('settings_cache')) {
++            $settingsCache = $request->attributes->get('settings_cache');
++        } else {
++            $settingsList = \Illuminate\Support\Facades\DB::table('settings')->select('name', 'value', 'type')->get();
++            $settingsCache = $settingsList->keyBy('name');
++            $request->attributes->set('settings_cache', $settingsCache);
++        }
++        $defaultImage = $settingsCache->get('default_image')->value ?? null;
++        if ($request->attributes->has('subscribed_language_ids')) {
++            $subscribedLanguageIds = $request->attributes->get('subscribed_language_ids');
++        } else { ... $request->attributes->set('subscribed_language_ids', $subscribedLanguageIds); }
+
+-        $post_count = Post::where('posts.channel_id', $channelData->id)...->count();
++        $post_count = $getChannelPosts->total();
+
+-        $subscriber = Auth::check() ? ChannelSubscriber::where('channel_id', $channelData->id)...->first() : 'unauthorized';
++        $subscriber = Auth::check() ? ($channelData->is_followed ? 1 : null) : 'unauthorized';
+```
+
 ### Impact & Scalability
-* **`/topics`**: Reduced queries from `10 Statements` to `9 Statements` (0 duplicates).
-* **`/topics/world`**: Reduced queries from `12 Statements` to `9 Statements` (25% query reduction, 0 duplicates); Eloquent model hydrations dropped from `163 Models` down to `17 Models` (~90% RAM reduction).
+* **`/channels`**: Reduced queries from `11 Statements` to `9 Statements` (0 duplicates); Models reduced from `7 Models` down to `6 Models` (0 Setting models).
+* **`/channels/{slug}`**: Reduced queries from `14 Statements` to `10 Statements` (0 duplicates); Models reduced from `20 Models` down to `18 Models` (0 Setting, 0 Subscriber models).
+
 

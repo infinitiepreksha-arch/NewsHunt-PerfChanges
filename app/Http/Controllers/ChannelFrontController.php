@@ -17,23 +17,46 @@ class ChannelFrontController extends Controller
     {
         $theme  = getTheme();
         $userId = Auth::user()->id ?? 0;
+        $request = request();
 
-        $defaultImage = Setting::where('name', 'default_image')->first()->value ?? null;
-        if ($userId) {
-            $subscribedLanguageIds = NewsLanguageSubscriber::where('user_id', $userId)->pluck('news_language_id');
+        if ($request->attributes->has('settings_cache')) {
+            $settingsCache = $request->attributes->get('settings_cache');
         } else {
-            $sessionLanguageId = session('selected_news_language');
-            if ($sessionLanguageId) {
-                // If user selected a language, use it (even if not active)
-                $subscribedLanguageIds = collect([$sessionLanguageId]);
-            } else {
-                // If not selected, use the first active language
-                $defaultActiveLanguage = NewsLanguage::where('is_active', 1)->first();
-                $subscribedLanguageIds = $defaultActiveLanguage ? collect([$defaultActiveLanguage->id]) : collect();
-            }
+            $settingsList = \Illuminate\Support\Facades\DB::table('settings')->select('name', 'value', 'type')->get();
+            $settingsCache = $settingsList->keyBy('name');
+            $request->attributes->set('settings_cache', $settingsCache);
         }
+        $defaultImage = $settingsCache->get('default_image')->value ?? null;
+
+        if ($request->attributes->has('subscribed_language_ids')) {
+            $subscribedLanguageIds = $request->attributes->get('subscribed_language_ids');
+        } else {
+            if ($userId) {
+                $subscribedLanguageIds = NewsLanguageSubscriber::where('user_id', $userId)->pluck('news_language_id');
+            } else {
+                $sessionLanguageId = session('selected_news_language');
+                if ($sessionLanguageId) {
+                    $subscribedLanguageIds = collect([$sessionLanguageId]);
+                } else {
+                    $defaultActiveLanguage = \App\Providers\AppServiceProvider::$activeLanguageCache ?? NewsLanguage::where('is_active', 1)->first();
+                    $subscribedLanguageIds = $defaultActiveLanguage ? collect([$defaultActiveLanguage->id]) : collect();
+                }
+            }
+            $request->attributes->set('subscribed_language_ids', $subscribedLanguageIds);
+        }
+
         if ($channel !== null) {
-            $channelData       = Channel::where('slug', $channel)->firstOrFail();
+            $user = Auth::user();
+            $channelQuery = Channel::select('id', 'name', 'slug', 'logo', 'description', 'follow_count', 'status')
+                ->where('slug', $channel);
+
+            if ($user) {
+                $channelQuery->withCount(['subscribers as is_followed' => function ($query) use ($user) {
+                    $query->where('user_id', $user->id);
+                }]);
+            }
+
+            $channelData       = $channelQuery->firstOrFail();
             $channelData->logo = url('storage/images/' . $channelData->logo);
 
             $perPage = 15;
@@ -41,7 +64,7 @@ class ChannelFrontController extends Controller
             $getChannelPosts = Post::select(
                 'posts.id', 'posts.slug', 'posts.type', 'posts.video', 'posts.video_thumb',
                 'posts.image', 'posts.comment',
-                'channels.name as channel_name', 'channels.logo as channel_logo',
+                'channels.name as channel_name', 'channels.logo as channel_logo', 'channels.slug as channel_slug',
                 'topics.name as topic_name', 'topics.slug as topic_slug',
                 'posts.title', 'posts.favorite', 'posts.description',
                 'posts.status', 'posts.publish_date', 'posts.pubdate'
@@ -62,11 +85,7 @@ class ChannelFrontController extends Controller
                 ->orderBy('posts.publish_date', 'desc')
                 ->paginate($perPage);
 
-            $post_count = Post::where('posts.channel_id', $channelData->id)
-                ->when($subscribedLanguageIds->isNotEmpty(), function ($query) use ($subscribedLanguageIds) {
-                    $query->whereIn('news_language_id', $subscribedLanguageIds);
-                })
-                ->count();
+            $post_count = $getChannelPosts->total();
 
             foreach ($getChannelPosts as $post) {
                 // For video/youtube posts, use video_thumb in the image field if image is empty
@@ -91,7 +110,7 @@ class ChannelFrontController extends Controller
             }
 
             $subscriber = Auth::check()
-                ? ChannelSubscriber::where('channel_id', $channelData->id)->where('user_id', $userId)->first()
+                ? ($channelData->is_followed ? 1 : null)
                 : 'unauthorized';
 
             $title = $channelData->name;
@@ -103,16 +122,21 @@ class ChannelFrontController extends Controller
             $perPage = 12;
             $user    = Auth::user();
 
-            $channelData = Channel::where('status', 'active')
+            $channelsQuery = Channel::select('id', 'name', 'slug', 'logo', 'description', 'follow_count', 'status')
+                ->where('status', 'active')
                 ->whereHas('posts', function ($query) use ($subscribedLanguageIds) {
                     if ($subscribedLanguageIds->isNotEmpty()) {
                         $query->whereIn('news_language_id', $subscribedLanguageIds);
                     }
-                })
-                ->withCount(['subscribers as is_followed' => function ($query) use ($user) {
-                    $query->where('user_id', $user->id ?? '');
-                }])
-                ->paginate($perPage);
+                });
+
+            if ($user) {
+                $channelsQuery->withCount(['subscribers as is_followed' => function ($query) use ($user) {
+                    $query->where('user_id', $user->id);
+                }]);
+            }
+
+            $channelData = $channelsQuery->paginate($perPage);
 
             $title = __('frontend-labels.channels.title');
             $data  = compact('title', 'channelData', 'theme');

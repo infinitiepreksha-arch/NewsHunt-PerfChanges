@@ -195,6 +195,11 @@ This document is the master log of all feature updates, performance optimization
   * [app/Http/Controllers/CategoryController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/CategoryController.php)
   * [app/Helpers/helper.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Helpers/helper.php)
 
+### 18. [2026-07-21] Channels Directory & Single Channel Profile Performance Optimization
+* **Task Description:** Optimized query execution, Eloquent model hydrations, and duplicate queries for Channels Directory (`/channels`) and Single Channel Profile (`/channels/{slug}`). Saved 2 duplicate queries via `$request->attributes` settings & language caching, eliminated standalone `$post_count` query by using `$getChannelPosts->total()`, bypassed guest subqueries, and integrated subscriber status subquery directly into `$channelData`.
+* **Files Changed:**
+  * [app/Http/Controllers/ChannelFrontController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/ChannelFrontController.php)
+
 ---
 
 ## 📌 Master Go-To Index of All Changed Codebase Files

@@ -785,15 +785,22 @@ Deferred AJAX loading for Navbar Category Dropdowns and homepage sliders (Most R
   * `/topics`: Queries reduced from `10 Statements` to `9 Statements` (0 duplicates).
   * `/topics/world`: Queries reduced from `12 Statements` to `9 Statements` (25% query reduction, 0 duplicates); Eloquent hydrated models dropped from `163 Models` to `17 Models` (~90% memory reduction).
 
-### [2026-07-21] Living Implementation Plan & Recursive User Feedback Protocol
-* **Feature**: Codified Living Implementation Plan (`implementation_plan.md`) in-place iteration rule and recursive user feedback loop into `.agents/AGENTS.md` protocol.
+### [2026-07-21] Channels Directory & Single Channel Profile Performance Optimization
+
+* **Feature**: Optimized database query execution, Eloquent model hydrations, and duplicate queries for Channels Directory (`/channels`) and Single Channel Profile (`/channels/{slug}`) pages.
 * **Files Modified**:
-  * [.agents/AGENTS.md](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/.agents/AGENTS.md)
-  * [.agents/AGENTS_CHANGES_LOG.md](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/.agents/AGENTS_CHANGES_LOG.md)
+  * [ChannelFrontController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/ChannelFrontController.php)
 * **Logic Changes**:
-  * **Single Living Document**: Mandated that all planning feedback, user testing revisions, and bug fixes update the same `implementation_plan.md` file in place throughout the feature lifecycle.
-  * **Recursive Feedback Loop**: Enforced recursive loop (Plan ➔ Approve ➔ Execute ➔ Test ➔ Update SAME Plan ➔ Approve ➔ Execute) until 100% user satisfaction before archiving into `.agents/features/YYYY-MM-DD_<feature_name>/`.
-  * **Rule 11 Added**: Codified Rule 11 under Mandatory System Rules in `.agents/AGENTS.md`.
+  * Replaced `Setting::where('name', 'default_image')->first()` with `$request->attributes` cached settings (`$settingsCache->get('default_image')->value ?? null`), eliminating 1 SQL query and 1 `Setting` Eloquent model hydration per request.
+  * Shared `$subscribedLanguageIds` via `$request->attributes->set('subscribed_language_ids', ...)`, eliminating duplicate `news_languages_subscribers` queries in `AppServiceProvider`.
+  * Replaced the standalone `$post_count = Post::where(...)->count()` query on `/channels/{slug}` with `$post_count = $getChannelPosts->total()`, removing 1 database query.
+  * Wrapped `withCount(['subscribers as is_followed' => ...])` on `/channels` in a `$user ? ... : ...` check to avoid executing unnecessary subqueries (`where user_id = ''`) for unauthenticated visitors.
+  * Integrated `subscribers as is_followed` `withCount` subquery directly into `$channelData` query on `/channels/{slug}`, eliminating the extra `ChannelSubscriber::where('channel_id', ...)` SQL query and model hydration.
+  * Added explicit column selection (`Channel::select(...)`) and added `'channels.slug as channel_slug'` to `Post::select(...)`.
+* **Verification Results**:
+  * `/channels`: Queries reduced from `11 Statements` (2 duplicates) down to `9 Statements` (0 duplicates); Models reduced from `7 Models` down to `6 Models` (0 Setting models).
+  * `/channels/{slug}`: Queries reduced from `14 Statements` (2 duplicates) down to `10 Statements` (0 duplicates); Models reduced from `20 Models` down to `18 Models` (0 Setting, 0 Subscriber models).
+
 
 
 
