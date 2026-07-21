@@ -18,29 +18,45 @@ class SearchPostController extends Controller
     const TIME_FORMATE = 'Y-m-d H:i';
     public function search(Request $request)
     {
-        $userId = Auth::user()->id ?? 0;
+        $userId = Auth::id() ?? 0;
 
-        if ($userId) {
-            $subscribedLanguageIds = NewsLanguageSubscriber::where('user_id', $userId)->pluck('news_language_id');
+        if ($request->attributes->has('subscribed_language_ids')) {
+            $subscribedLanguageIds = $request->attributes->get('subscribed_language_ids');
         } else {
-            $sessionLanguageId = session('selected_news_language');
-            if ($sessionLanguageId) {
-                // If user selected a language, use it (even if not active)
-                $subscribedLanguageIds = collect([$sessionLanguageId]);
+            if ($userId) {
+                $subscribedLanguageIds = NewsLanguageSubscriber::where('user_id', $userId)->pluck('news_language_id');
             } else {
-                // If not selected, use the first active language
-                $defaultActiveLanguage = NewsLanguage::where('is_active', 1)->first();
-                $subscribedLanguageIds = $defaultActiveLanguage ? collect([$defaultActiveLanguage->id]) : collect();
+                $sessionLanguageId = session('selected_news_language');
+                if ($sessionLanguageId) {
+                    // If user selected a language, use it (even if not active)
+                    $subscribedLanguageIds = collect([$sessionLanguageId]);
+                } else {
+                    // If not selected, use the first active language
+                    $defaultActiveLanguage = NewsLanguage::where('is_active', 1)->first();
+                    $subscribedLanguageIds = $defaultActiveLanguage ? collect([$defaultActiveLanguage->id]) : collect();
+                }
             }
+            $request->attributes->set('subscribed_language_ids', $subscribedLanguageIds);
         }
 
         $searchQuery = $request->input('search');
-        $channels    = $request->input('channel');
-        $topics      = $request->input('topic');
-        $filter      = $request->input('filter');
+        
+        $rawChannels = $request->input('channel') ?? $request->input('selected_channels');
+        if (is_string($rawChannels)) {
+            $channels = array_filter(explode('|', $rawChannels));
+        } else {
+            $channels = array_filter((array) $rawChannels);
+        }
+        $channels = array_values(array_diff($channels, ['all']));
 
-        $channel_ids = ChannelSubscriber::where('user_id', Auth::user()->id ?? 0)->pluck('channel_id')->toArray();
-        $topic_ids   = TopicFollower::where('user_id', Auth::user()->id ?? 0)->pluck('topic_id')->toArray();
+        $rawTopics = $request->input('topic');
+        if (is_string($rawTopics)) {
+            $topics = array_filter(explode('|', $rawTopics));
+        } else {
+            $topics = array_filter((array) $rawTopics);
+        }
+
+        $filter = $request->input('filter');
 
         $getPosts = Post::select(
             'posts.id',
@@ -64,7 +80,7 @@ class SearchPostController extends Controller
             'posts.reaction',
         )
             ->where('posts.status', 'active')
-            ->join('channels', function ($join) {
+            ->leftJoin('channels', function ($join) {
                 $join->on('posts.channel_id', '=', 'channels.id')
                     ->where('channels.status', 'active');
             })
@@ -72,9 +88,11 @@ class SearchPostController extends Controller
                 $join->on('posts.topic_id', '=', 'topics.id')
                     ->where('topics.status', 'active');
             });
+
         if ($subscribedLanguageIds->isNotEmpty()) {
             $getPosts->whereIn('posts.news_language_id', $subscribedLanguageIds);
         }
+
         if ($searchQuery) {
             $getPosts->where(function ($subQuery) use ($searchQuery) {
                 $subQuery->where('posts.slug', 'LIKE', "%$searchQuery%")
@@ -83,51 +101,31 @@ class SearchPostController extends Controller
                     ->orWhere('channels.name', 'LIKE', "%$searchQuery%")
                     ->orWhere('topics.slug', 'LIKE', "%$searchQuery%")
                     ->orWhere('topics.name', 'LIKE', "%$searchQuery%");
-            })
-            ->groupBy('posts.id');
+            });
         }
+
         if (! empty($channels)) {
             $getPosts->whereIn('channels.slug', $channels);
         }
+
         if (! empty($topics)) {
             $getPosts->whereIn('topics.slug', $topics);
         }
 
-        if ($filter == "most-read") {
-            $getPosts->where('publish_date', '>', now()->subDays(7)->endOfDay())->orderBy('posts.view_count', 'DESC');
-        } elseif ($filter == "most-liked") {
-
+        if ($filter == "most-read" || $request->has('most-read')) {
+            $getPosts->orderBy('posts.view_count', 'DESC');
+        } elseif ($filter == "most-liked" || $request->has('most-liked')) {
             $getPosts->orderBy('posts.favorite', 'DESC');
-        } elseif ($filter == "most-recent") {
-
-            $getPosts->orderBy('posts.publish_date', 'DESC');
-        } elseif ($filter == "channels-followed") {
-
-            $getPosts->whereIn('posts.channel_id', $channel_ids);
-        } elseif ($filter == "topics-followed") {
-
-            $getPosts->whereIn('posts.topic_id', $topic_ids);
         } else {
             $getPosts->orderBy('posts.publish_date', 'DESC');
         }
 
-        $getPosts     = $getPosts->paginate(15)->withQueryString();
-        $channels     = Channel::select('id', 'name', 'slug')->where('status', 'active')->get();
-        $topics       = Topic::select('id', 'name', 'slug')->where('status', 'active')->get();
-        $post_label   = Setting::get()->where('name', 'news_label_place_holder')->first();
-        $defaultImage = Setting::get()->where('name', 'default_image')->first();
+        $getPosts = $getPosts->paginate(15)->withQueryString();
 
         foreach ($getPosts as $post) {
-
             $post->image = $post->image ?? url($defaultImage->value ?? 'public/front_end/classic/images/default/post-placeholder.jpg');
             if ($post->image === url('storage')) {
                 $post->image = $defaultImage->value;
-                // Set default values for video fields
-                $post->video_thumb = $post->video_thumb ?? $defaultImage->value;
-                $post->video       = $post->video ?? $defaultImage->value;
-            } else {
-                $post->image = $post->image;
-                // Set default values for video fields
                 $post->video_thumb = $post->video_thumb ?? $defaultImage->value;
                 $post->video       = $post->video ?? $defaultImage->value;
             }
@@ -139,8 +137,85 @@ class SearchPostController extends Controller
             }
         }
 
-        $title = $searchQuery ?? (isset($post_label->value) ? $post_label->value : __('frontend-labels.posts.all_posts'));
+        $channels = Channel::select('id', 'name', 'slug')
+            ->where('status', 'active')
+            ->whereHas('posts', function ($query) use ($subscribedLanguageIds) {
+                if ($subscribedLanguageIds->isNotEmpty()) {
+                    $query->whereIn('news_language_id', $subscribedLanguageIds);
+                }
+            })
+            ->get();
+
+        $topics = Topic::select('id', 'name', 'slug')
+            ->where('status', 'active')
+            ->whereHas('posts', function ($query) use ($subscribedLanguageIds) {
+                if ($subscribedLanguageIds->isNotEmpty()) {
+                    $query->whereIn('news_language_id', $subscribedLanguageIds);
+                }
+            })
+            ->orderBy('categorie_order', 'asc')
+            ->get();
+
+        if ($request->attributes->has('settings_cache')) {
+            $settingsCache = $request->attributes->get('settings_cache');
+        } else {
+            $settingsList = \Illuminate\Support\Facades\DB::table('settings')->select('name', 'value', 'type')->get();
+            $settingsCache = $settingsList->keyBy('name');
+            $request->attributes->set('settings_cache', $settingsCache);
+        }
+
+        $postLabelObj = $settingsCache->get('news_label_place_holder') ?? $settingsCache->get('news_lable_place_holder');
+        $postLabelVal = $postLabelObj->value ?? '';
+        $post_label   = (object)['value' => $postLabelVal];
+
+        $defaultImageObj = $settingsCache->get('default_image');
+        $defaultImageVal = $defaultImageObj->value ?? null;
+        $defaultImage    = (object)['value' => $defaultImageVal];
+
+        $title = $searchQuery ?? (isset($post_label->value) && !empty($post_label->value) ? $post_label->value : __('frontend-labels.posts.all_posts'));
         $theme = getTheme();
+
+        if ($request->ajax() || $request->wantsJson()) {
+            $postsData = [];
+            foreach ($getPosts as $p) {
+                $postsData[] = [
+                    'id'           => $p->id,
+                    'title'        => $p->title,
+                    'slug'         => $p->slug,
+                    'image'        => $p->image,
+                    'video_thumb'  => $p->video_thumb ?? null,
+                    'type'         => $p->type ?? 'post',
+                    'comment'      => (int) ($p->comment ?? 0),
+                    'favorite'     => (int) ($p->favorite ?? 0),
+                    'view_count'   => (int) ($p->view_count ?? 0),
+                    'reaction'     => (int) ($p->reaction ?? 0),
+                    'publish_date' => $p->publish_date ?? $p->pubdate,
+                    'pubdate'      => $p->pubdate,
+                    'channel_name' => $p->channel_name ?? null,
+                    'channel_slug' => $p->channel_slug ?? null,
+                    'channel_logo' => isset($p->channel_logo) && $p->channel_logo ? url('storage/images/' . $p->channel_logo) : null,
+                    'topic_name'   => $p->topic_name ?? null,
+                    'topic_slug'   => $p->topic_slug ?? null,
+                ];
+            }
+
+            return response()->json([
+                'success'      => true,
+                'posts'        => $postsData,
+                'pagination'   => [
+                    'total'         => $getPosts->total(),
+                    'per_page'      => $getPosts->perPage(),
+                    'current_page'  => $getPosts->currentPage(),
+                    'last_page'     => $getPosts->lastPage(),
+                    'first_item'    => $getPosts->firstItem() ?? 0,
+                    'last_item'     => $getPosts->lastItem() ?? 0,
+                    'prev_page_url' => $getPosts->previousPageUrl(),
+                    'next_page_url' => $getPosts->nextPageUrl(),
+                ],
+                'search_query' => $searchQuery ?? '',
+                'title'        => $title,
+            ]);
+        }
 
         return view('front_end/' . $theme . '/pages/search-result', compact('getPosts', 'title', 'searchQuery', 'post_label', 'channels', 'topics', 'theme'));
     }

@@ -188,6 +188,15 @@ This document is the master log of all feature updates, performance optimization
 
 ---
 
+### 19. [2026-07-21] End-to-End Instant AJAX Search & Filtering Engine
+* **Task Description:** Built instant AJAX live search engine, refined Channels/Topics filters, centered search input header with dynamic subtitle sentence, and custom NewsHunt pagination renderer (`nav-x uc-pagination hstack gap-1 justify-center ft-secondary text-black`) matching `vendor/custom-pagination.blade.php`.
+* **Files Changed:**
+  * [app/Http/Controllers/SearchPostController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/SearchPostController.php)
+  * [resources/views/front_end/classic/pages/search-result.blade.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/resources/views/front_end/classic/pages/search-result.blade.php)
+  * [public/front_end/classic/js/custom/search-news.js](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/public/front_end/classic/js/custom/search-news.js)
+
+---
+
 ## 📌 Master Go-To Index of All Changed Codebase Files
 
 **Total Unique Codebase Files Modified/Created Till Now:** 42 Files
@@ -195,17 +204,17 @@ This document is the master log of all feature updates, performance optimization
 
 | # | File Path | Primary Task / Feature | Date Modified |
 |---|---|---|---|
-| 1 | [PROJECT_HISTORY.md](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/PROJECT_HISTORY.md) | Documentation & Architecture Sync | 2026-07-20 |
-| 2 | [FILE_CHANGES_LOG.md](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/FILE_CHANGES_LOG.md) | File Changes Tracker Setup | 2026-07-20 |
+| 1 | [PROJECT_HISTORY.md](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/PROJECT_HISTORY.md) | Documentation & Architecture Sync | 2026-07-21 |
+| 2 | [FILE_CHANGES_LOG.md](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/FILE_CHANGES_LOG.md) | File Changes Tracker Setup | 2026-07-21 |
 | 3 | [routes/web.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/routes/web.php) | AJAX Sliders & WebP Route Triggers | 2026-07-14 |
-| 4 | [app/Helpers/helper.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Helpers/helper.php) | Versioned Asset & YouTube Accessor | 2026-07-10 |
+| 4 | [app/Helpers/helper.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Helpers/helper.php) | Versioned Asset & YouTube Accessor | 2026-07-20 |
 | 5 | [app/Models/Post.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Models/Post.php) | YouTube Thumbnail Downscaler Accessor | 2026-07-10 |
 | 6 | [app/Services/FileService.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Services/FileService.php) | WebP Image Upload Compression | 2026-07-10 |
 | 7 | [app/Services/CachingService.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Services/CachingService.php) | Settings Permanent Caching Layer | 2026-07-10 |
 | 8 | [app/Providers/AppServiceProvider.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Providers/AppServiceProvider.php) | View Composer Caching & Buster | 2026-07-17 |
 | 9 | [app/Http/Controllers/HomeController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/HomeController.php) | Homepage Feed Shuffling & Deduplication | 2026-07-15 |
 | 10 | [app/Http/Controllers/PostDetailController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/PostDetailController.php) | Post Detail Page Query Optimization | 2026-07-17 |
-| 11 | [app/Http/Controllers/SearchPostController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/SearchPostController.php) | Multi-Table Subquery Union Search | 2026-07-16 |
+| 11 | [app/Http/Controllers/SearchPostController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/SearchPostController.php) | Instant AJAX Live Search & Channels Filter | 2026-07-21 |
 | 12 | [app/Http/Controllers/AdminControllers/PostController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/AdminControllers/PostController.php) | WebP Image Upload Compression | 2026-07-10 |
 | 13 | [app/Http/Controllers/AdminControllers/AudioPostAdminController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/AdminControllers/AudioPostAdminController.php) | WebP Uploads & Constants Cleanups | 2026-07-10 |
 | 14 | [app/Http/Controllers/AdminControllers/VideoAdminController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/AdminControllers/VideoAdminController.php) | WebP Image Upload Compression | 2026-07-10 |
@@ -225,7 +234,7 @@ This document is the master log of all feature updates, performance optimization
 | 28 | [resources/views/front_end/classic/layout/style.blade.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/resources/views/front_end/classic/layout/style.blade.php) | Versioned Asset Links | 2026-07-09 |
 | 29 | [resources/views/front_end/classic/layout/script.blade.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/resources/views/front_end/classic/layout/script.blade.php) | Script Load Order & De-duplication | 2026-07-13 |
 | 30 | [resources/views/front_end/classic/pages/index.blade.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/resources/views/front_end/classic/pages/index.blade.php) | LCP Prioritization & E-Newspaper CLS | 2026-07-17 |
-| 31 | [resources/views/front_end/classic/pages/search-result.blade.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/resources/views/front_end/classic/pages/search-result.blade.php) | Search Filter Grid View | 2026-07-16 |
+| 31 | [resources/views/front_end/classic/pages/search-result.blade.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/resources/views/front_end/classic/pages/search-result.blade.php) | Centered Search Bar & Clean Filters | 2026-07-21 |
 | 32 | [resources/views/front_end/classic/pages/partials/topic_dropdown_posts.blade.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/resources/views/front_end/classic/pages/partials/topic_dropdown_posts.blade.php) | Navbar Dropdown Post Partial | 2026-07-14 |
 | 33 | [resources/views/front_end/classic/pages/partials/most_read_slides.blade.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/resources/views/front_end/classic/pages/partials/most_read_slides.blade.php) | Most Read Slider Partial | 2026-07-15 |
 | 34 | [resources/views/front_end/classic/pages/partials/web_story_slides.blade.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/resources/views/front_end/classic/pages/partials/web_story_slides.blade.php) | Web Story Slider Partial | 2026-07-15 |
@@ -235,6 +244,7 @@ This document is the master log of all feature updates, performance optimization
 | 38 | [public/front_end/classic/css/custom.css](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/public/front_end/classic/css/custom.css) | `.epaper_css` CLS Fix & Swiper CSS | 2026-07-16 |
 | 39 | [public/front_end/classic/js/app-head-bs.js](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/public/front_end/classic/js/app-head-bs.js) | Static Preloader Configuration | 2026-07-06 |
 | 40 | [public/front_end/classic/js/custom/custom-jquery.js](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/public/front_end/classic/js/custom/custom-jquery.js) | Slider Paginators & JSON Builders | 2026-07-15 |
-| 41 | [public/front_end/classic/js/custom/search-news.js](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/public/front_end/classic/js/custom/search-news.js) | Search AJAX & pushState Paginator | 2026-07-16 |
+| 41 | [public/front_end/classic/js/custom/search-news.js](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/public/front_end/classic/js/custom/search-news.js) | Instant Live Search & Custom Pagination | 2026-07-21 |
 | 42 | [.gitignore](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/.gitignore) | Local IDE Folders & Scratch Script Exclusions | 2026-07-20 |
+
 

@@ -9,7 +9,10 @@
 
     // Wait for DOM ready
     function init() {
-        // ─── DOM Elements ────────────────────────────────────────
+        // Initialize Search Result Page Instant AJAX Filter Engine independently
+        initSearchPageFilterEngine();
+
+        // ─── DOM Elements for Sidebar Search Modal ─────────────────
         var searchInput = document.getElementById('sidebar_search_input');
         var searchForm = document.getElementById('search-form-data');
         var recentSection = document.getElementById('recent-searches-section');
@@ -25,7 +28,7 @@
         var suggestionsSection = document.getElementById('suggestions-section');
         var suggestionsList = document.getElementById('suggestions-list');
 
-        // Guard: if elements not found, bail out
+        // Guard: if search modal elements not found, bail out from modal init only
         if (!searchInput || !searchForm || !recentSection) return;
 
         var currentSearchQuery = '';
@@ -114,7 +117,7 @@
 
         // ─── Helpers ──────────────────────────────────────────
         function getBaseUrl() {
-            var action = searchForm.getAttribute('action'); 
+            var action = searchForm.getAttribute('action');
             if (action) {
                 // If action is http://.../posts or /posts, remove the trailing /posts
                 return action.split('?')[0].replace(/\/posts\/?$/, '');
@@ -177,7 +180,7 @@
                     html += '</div>';
                 }
                 html += '<span class="fs-7 fw-medium text-truncate">' + escapeHtml(item.title) + '</span>';
-                
+
                 div.innerHTML = html;
                 div.addEventListener('click', function () {
                     searchInput.value = item.title;
@@ -360,7 +363,7 @@
             });
         });
 
-        // Search input — when cleared, show recent searches. When typing, show suggestions.
+        // Search input — when cleared, show recent searches. When typing, show suggestions. On Enter, redirect to search results page.
         var debounceTimer;
         searchInput.addEventListener('input', function () {
             var val = this.value.trim();
@@ -371,6 +374,17 @@
                 debounceTimer = setTimeout(function () {
                     fetchSuggestions(val);
                 }, 300);
+            }
+        });
+
+        searchInput.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' || e.keyCode === 13) {
+                e.preventDefault();
+                var query = this.value ? this.value.trim() : '';
+                if (query) {
+                    var baseUrl = getBaseUrl();
+                    window.location.href = baseUrl + '/posts?search=' + encodeURIComponent(query);
+                }
             }
         });
 
@@ -425,6 +439,369 @@
 
         // Render recent searches on first load
         renderRecentSearches();
+
+        // Initialize Search Result Page Instant AJAX Filter Engine
+        initSearchPageFilterEngine();
+    }
+
+    // ─── Instant AJAX Filter Engine for Search Result Page (/posts) ───
+    function initSearchPageFilterEngine() {
+        var postsContainer = document.getElementById('posts-container');
+        if (!postsContainer) return;
+
+        var pageSearchInput = document.getElementById('page_search_input');
+        var channelAllBoxes = document.querySelectorAll('.channel-all-checkbox');
+        var channelItemBoxes = document.querySelectorAll('.channel-item-checkbox');
+        var topicItemBoxes = document.querySelectorAll('.topic-item-checkbox');
+        var sortRadios = document.querySelectorAll('.sort-filter-radio');
+        var clearBtnDesktop = document.getElementById('btn-clear-filters-desktop');
+        var clearBtnMobile = document.getElementById('btn-clear-filters-mobile');
+
+        var searchDebounceTimer;
+
+        function syncInputState(selector, sourceElement) {
+            var val = sourceElement.value;
+            var isChecked = sourceElement.checked;
+            document.querySelectorAll(selector).forEach(function (el) {
+                if (el.value === val) {
+                    el.checked = isChecked;
+                }
+            });
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        // Channel "All" Checkbox handler
+        channelAllBoxes.forEach(function (allBox) {
+            allBox.addEventListener('change', function () {
+                var isChecked = this.checked;
+                channelAllBoxes.forEach(function (b) { b.checked = isChecked; });
+                if (isChecked) {
+                    channelItemBoxes.forEach(function (cb) { cb.checked = false; });
+                }
+                triggerAjaxFetch();
+            });
+        });
+
+        // Channel Item Checkboxes handler
+        channelItemBoxes.forEach(function (itemBox) {
+            itemBox.addEventListener('change', function () {
+                syncInputState('.channel-item-checkbox', this);
+
+                var checkedItems = document.querySelectorAll('.channel-item-checkbox:checked');
+                if (checkedItems.length > 0) {
+                    channelAllBoxes.forEach(function (b) { b.checked = false; });
+                } else {
+                    channelAllBoxes.forEach(function (b) { b.checked = true; });
+                }
+                triggerAjaxFetch();
+            });
+        });
+
+        // Topic Item Checkboxes handler
+        topicItemBoxes.forEach(function (topicBox) {
+            topicBox.addEventListener('change', function () {
+                syncInputState('.topic-item-checkbox', this);
+                triggerAjaxFetch();
+            });
+        });
+
+        // Sort Radios handler
+        sortRadios.forEach(function (radio) {
+            radio.addEventListener('change', function () {
+                syncInputState('.sort-filter-radio', this);
+                triggerAjaxFetch();
+            });
+        });
+
+        // Search Input handler (300ms debounce)
+        if (pageSearchInput) {
+            pageSearchInput.addEventListener('input', function () {
+                clearTimeout(searchDebounceTimer);
+                searchDebounceTimer = setTimeout(function () {
+                    triggerAjaxFetch();
+                }, 300);
+            });
+        }
+
+        // Clear Filters Buttons handler
+        function clearFilters() {
+            if (pageSearchInput) pageSearchInput.value = '';
+            channelAllBoxes.forEach(function (b) { b.checked = true; });
+            channelItemBoxes.forEach(function (cb) { cb.checked = false; });
+            topicItemBoxes.forEach(function (tb) { tb.checked = false; });
+            sortRadios.forEach(function (r) {
+                r.checked = (r.value === 'most-recent');
+            });
+            triggerAjaxFetch();
+        }
+
+        if (clearBtnDesktop) clearBtnDesktop.addEventListener('click', clearFilters);
+        if (clearBtnMobile) clearBtnMobile.addEventListener('click', clearFilters);
+
+        // Pagination Ajax handler
+        document.addEventListener('click', function (e) {
+            var pageLink = e.target.closest('#posts-container .uc-pagination a');
+            if (pageLink && pageLink.href) {
+                e.preventDefault();
+                fetchFilteredPosts(pageLink.href, true);
+            }
+        });
+
+        // Popstate handler for browser back/forward buttons
+        window.addEventListener('popstate', function () {
+            fetchFilteredPosts(window.location.href, false);
+        });
+
+        function triggerAjaxFetch() {
+            var baseUrl = window.location.origin + window.location.pathname;
+            var params = new URLSearchParams();
+
+            var searchVal = pageSearchInput ? pageSearchInput.value.trim() : '';
+            if (searchVal) params.append('search', searchVal);
+
+            var checkedChannels = document.querySelectorAll('.channel-item-checkbox:checked');
+            checkedChannels.forEach(function (cb) {
+                params.append('channel[]', cb.value);
+            });
+
+            var checkedTopics = document.querySelectorAll('.topic-item-checkbox:checked');
+            checkedTopics.forEach(function (tb) {
+                params.append('topic[]', tb.value);
+            });
+
+            var checkedSort = document.querySelector('.sort-filter-radio:checked');
+            if (checkedSort && checkedSort.value) {
+                params.append('filter', checkedSort.value);
+            }
+
+            var queryString = params.toString();
+            var targetUrl = baseUrl + (queryString ? '?' + queryString : '');
+            fetchFilteredPosts(targetUrl, true);
+        }
+
+        function renderPagination(pagination) {
+            if (!pagination || pagination.last_page <= 1) return '';
+
+            var currentPage = pagination.current_page;
+            var lastPage = pagination.last_page;
+            var prevUrl = pagination.prev_page_url;
+            var nextUrl = pagination.next_page_url;
+
+            function buildPageUrl(p) {
+                var baseUrl = window.location.origin + window.location.pathname;
+                var params = new URLSearchParams();
+
+                var searchVal = pageSearchInput ? pageSearchInput.value.trim() : '';
+                if (searchVal) params.append('search', searchVal);
+
+                var checkedChannels = document.querySelectorAll('.channel-item-checkbox:checked');
+                checkedChannels.forEach(function (cb) {
+                    params.append('channel[]', cb.value);
+                });
+
+                var checkedTopics = document.querySelectorAll('.topic-item-checkbox:checked');
+                checkedTopics.forEach(function (tb) {
+                    params.append('topic[]', tb.value);
+                });
+
+                var checkedSort = document.querySelector('.sort-filter-radio:checked');
+                if (checkedSort && checkedSort.value) {
+                    params.append('filter', checkedSort.value);
+                }
+
+                params.set('page', p);
+                return baseUrl + '?' + params.toString();
+            }
+
+            var html = '<div class="nav-pagination pt-4 xl:pt-6 mt-4 border-top">';
+            html += '<ul class="nav-x uc-pagination hstack gap-1 justify-center ft-secondary text-black" data-uc-margin="">';
+
+            // Chevron Left (Previous)
+            if (prevUrl) {
+                html += '<li><a href="' + escapeHtml(prevUrl) + '"><span class="icon icon-1 unicon-chevron-left"></span></a></li>';
+            } else {
+                html += '<li class="uc-disabled"><span class="icon icon-1 unicon-chevron-left"></span></li>';
+            }
+
+            // Ellipsis before first page
+            if (currentPage > 3) {
+                html += '<li><a href="' + escapeHtml(buildPageUrl(1)) + '">1</a></li>';
+                html += '<li class="uc-disabled"><span>…</span></li>';
+            }
+
+            // Page Numbers around currentPage (-1 to +1)
+            var startPage = Math.max(1, currentPage - 1);
+            var endPage = Math.min(lastPage, currentPage + 1);
+
+            for (var i = startPage; i <= endPage; i++) {
+                if (i === currentPage) {
+                    html += '<li class="uc-active"><a class="uc-active" href="' + escapeHtml(buildPageUrl(i)) + '">' + i + '</a></li>';
+                } else {
+                    html += '<li><a href="' + escapeHtml(buildPageUrl(i)) + '">' + i + '</a></li>';
+                }
+            }
+
+            // Ellipsis after last page
+            if (currentPage < lastPage - 2) {
+                html += '<li class="uc-disabled"><span>…</span></li>';
+                html += '<li><a href="' + escapeHtml(buildPageUrl(lastPage)) + '">' + lastPage + '</a></li>';
+            }
+
+            // Chevron Right (Next)
+            if (nextUrl) {
+                html += '<li><a href="' + escapeHtml(nextUrl) + '"><span class="icon icon-1 unicon-chevron-right"></span></a></li>';
+            } else {
+                html += '<li class="uc-disabled"><span class="icon icon-1 unicon-chevron-right"></span></li>';
+            }
+
+            html += '</ul></div>';
+            return html;
+        }
+
+        function renderPostsGrid(posts, pagination) {
+            if (!posts || posts.length === 0) {
+                postsContainer.innerHTML = '<div id="content-area" class="rounded-lg p-4"><div class="text-center py-5"><p class="text-muted">No posts found matching your criteria.</p></div></div>';
+                return;
+            }
+
+            var baseUrl = window.location.origin;
+            var html = '<div id="content-area" class="rounded-lg p-4">';
+            html += '<div class="panel">';
+            html += '<div id="posts-ad-container" class="row child-cols-12 sm:child-cols-6 lg:child-cols-4 col-match gy-4 xl:gy-6 gx-2 sm:gx-4">';
+
+            posts.forEach(function (post) {
+                var postUrl = baseUrl + '/posts/' + post.slug;
+                var topicUrl = post.topic_slug ? baseUrl + '/topics/' + post.topic_slug : '#';
+                var channelUrl = post.channel_slug ? baseUrl + '/channels/' + post.channel_slug : '#';
+
+                var imgUrl = post.image;
+                if (post.type === 'video' || post.type === 'youtube') {
+                    imgUrl = post.video_thumb || post.image;
+                }
+
+                html += '<div id="postRender">';
+                html += '<article class="post type-post panel vstack gap-2">';
+
+                // Image container
+                html += '<div class="post-image panel overflow-hidden">';
+                html += '<figure class="featured-image m-0 ratio ratio-16x9 rounded uc-transition-toggle overflow-hidden bg-gray-25 dark:bg-gray-800">';
+                html += '<a href="' + postUrl + '" class="position-cover" title="' + escapeHtml(post.title) + '">';
+                html += '<img class="media-cover image uc-transition-scale-up uc-transition-opaque" src="' + escapeHtml(imgUrl) + '" alt="' + escapeHtml(post.title) + '" loading="lazy">';
+
+                if (post.type === 'video' || post.type === 'youtube' || post.type === 'audio') {
+                    html += '<div class="post-category hstack gap-narrow justify-center align-items-center text-white">';
+                    html += '<a class="text-none" href="' + topicUrl + '" title="' + escapeHtml(post.topic_name) + '"><i class="bi bi-play-circle font-size-45"></i></a>';
+                    html += '</div>';
+                }
+                html += '</a></figure>';
+
+                // Topic Tag Badge (Top Left Overlay)
+                if (post.topic_name) {
+                    html += '<div class="post-category hstack gap-narrow position-absolute top-0 start-0 m-1 fs-7 fw-bold h-15px px-1 rounded-1 shadow-xs bg-white text-primary">';
+                    html += '<a class="text-none" href="' + topicUrl + '" title="' + escapeHtml(post.topic_name) + '">' + escapeHtml(post.topic_name) + '</a>';
+                    html += '</div>';
+                }
+                html += '</div>';
+
+                // Post Header Title
+                html += '<div class="post-header panel vstack gap-1 lg:gap-2">';
+                html += '<h3 class="post-title h6 sm:h6 xl:h5 m-0 text-truncate-2 m-0">';
+                html += '<a class="text-none" href="' + postUrl + '" title="' + escapeHtml(post.title) + '">' + escapeHtml(post.title) + '</a>';
+                html += '</h3>';
+                html += '</div>';
+
+                // Post Footer Meta (Channel Logo/Name & Metric Counters)
+                html += '<div><div class="post-meta panel fs-7 fw-medium text-gray-900 dark:text-white text-opacity-60">';
+                html += '<div class="meta"><div class="d-flex justify-between gap-2">';
+
+                // Channel Brand
+                html += '<div><div class="d-flex gap-1">';
+                if (post.channel_logo) {
+                    html += '<a href="' + channelUrl + '" title="' + escapeHtml(post.channel_name) + '"><img src="' + escapeHtml(post.channel_logo) + '" alt="Channel Logo" class="h-20px"></a>';
+                }
+                if (post.channel_name) {
+                    html += '<a href="' + channelUrl + '" class="text-black dark:text-white text-none fw-bold" title="' + escapeHtml(post.channel_name) + '">' + escapeHtml(post.channel_name) + '</a>';
+                }
+                html += '</div></div>';
+
+                html += '<div></div>';
+
+                // Metric Counters (Comments, Views, Likes)
+                html += '<div><div class="post-comments text-none hstack gap-narrow gap-1">';
+                html += '<a href="' + postUrl + '#comment-form" class="post-comments text-none hstack gap-narrow" title="Comments"><i class="icon-narrow unicon-chat"></i><span>' + (post.comment || 0) + '</span></a>';
+                html += '<i class="bi bi-eye fs-5" title="Views"></i><span title="Views">' + (post.view_count || 0) + '</span>';
+                html += '<i class="bi bi-heart-fill ms-1" title="Likes"></i><span>' + (post.reaction || post.favorite || 0) + '</span>';
+                html += '</div></div>';
+
+                html += '</div>';
+
+                // Date
+                html += '<div><div class="post-date hstack gap-narrow mt-1"><span>' + escapeHtml(post.publish_date) + '</span></div></div>';
+
+                html += '</div></div></div>';
+                html += '</article></div>';
+            });
+
+            html += '</div>';
+            html += renderPagination(pagination);
+            html += '</div></div>';
+            postsContainer.innerHTML = html;
+        }
+
+        function fetchFilteredPosts(targetUrl, updateHistory) {
+            postsContainer.style.opacity = '0.5';
+
+            fetch(targetUrl, {
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json'
+                }
+            })
+                .then(function (response) { return response.json(); })
+                .then(function (data) {
+                    postsContainer.style.opacity = '1';
+
+                    if (data.success && data.posts) {
+                        renderPostsGrid(data.posts, data.pagination);
+                    }
+
+                    if (data.pagination) {
+                        var elFirst = document.getElementById('counter-first');
+                        var elLast = document.getElementById('counter-last');
+                        var elTotal = document.getElementById('counter-total');
+                        var elSubtitle = document.getElementById('search-query-sentence');
+
+                        if (elFirst) elFirst.textContent = data.pagination.first_item;
+                        if (elLast) elLast.textContent = data.pagination.last_item;
+                        if (elTotal) elTotal.textContent = data.pagination.total;
+
+                        if (elSubtitle) {
+                            if (data.search_query && data.search_query.trim() !== '') {
+                                elSubtitle.innerHTML = ' for <strong>"' + escapeHtml(data.search_query) + '"</strong>';
+                            } else {
+                                elSubtitle.innerHTML = '';
+                            }
+                        }
+                    }
+
+                    if (updateHistory) {
+                        window.history.pushState({}, '', targetUrl);
+                    }
+                })
+                .catch(function (err) {
+                    postsContainer.style.opacity = '1';
+                    console.error('Filter AJAX error:', err);
+                });
+        }
     }
 
     // Run init when DOM is ready
@@ -433,24 +810,4 @@
     } else {
         init();
     }
-
-    // Also handle filterForm on search-result page (if exists)
-    document.addEventListener('DOMContentLoaded', function () {
-        var filterForm = document.getElementById('filterForm');
-        if (filterForm) {
-            filterForm.addEventListener('submit', function (e) {
-                e.preventDefault();
-                var checkboxes = document.querySelectorAll('input[name="channel[]"]:checked');
-                var selectedChannels = Array.from(checkboxes).map(function (cb) { return cb.value; });
-                var channelValue = selectedChannels.join('|');
-                var hiddenInput = document.createElement('input');
-                hiddenInput.type = 'hidden';
-                hiddenInput.value = channelValue;
-                var existingHidden = document.querySelector('input[name="selected_channels"]');
-                if (existingHidden) existingHidden.remove();
-                this.appendChild(hiddenInput);
-                this.submit();
-            });
-        }
-    });
 })();

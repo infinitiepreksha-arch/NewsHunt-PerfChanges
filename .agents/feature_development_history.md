@@ -61,3 +61,42 @@ $results = $postsQuery->unionAll($storiesQuery)->paginate(12);
 ### Impact & Future Scalability
 * **Benefit:** Gives users deep-linkable, shareable search URLs with full support for content type filtering.
 * **Caution:** When adding new content types to NewsHunt, ensure their database tables are included in `SearchPostController`'s union query builder.
+
+---
+
+## 2. End-to-End Instant AJAX Live Search & Custom NewsHunt Pagination Engine
+
+### Feature Need / Requirement
+1. **Live Search & Navbar Enter Redirect:** Search modal input must support live suggestions and redirect on Enter keypress to `/posts?search=query`.
+2. **Page Live Search & Centered Header:** Results page must pre-populate search query, feature a centered search bar, and update results dynamically via 300ms debounced live search.
+3. **Custom NewsHunt Pagination:** Renders native NewsHunt pagination controls (`nav-x uc-pagination hstack gap-1 justify-center ft-secondary text-black`) matching `vendor/custom-pagination.blade.php` (`<`, `1`, `2`, `...`, `5`, `>`).
+4. **Search Query Preservation:** Pagination controls must preserve all active search terms and channel/topic filter selections across page transitions.
+
+### Solution & Architecture Rationale
+1. **Independent Engine Initialization:** Separated `initSearchPageFilterEngine()` from modal element checks so page live search executes reliably across all page view states.
+2. **Channels Filter Normalization:** Stripped `'all'` values from `$channels` in `SearchPostController.php` to allow unfiltered queries when "All Channels" is checked.
+3. **Dynamic Pagination URL Construction:** Built `buildPageUrl(p)` in `search-news.js` to collect active search input and checked filters, ensuring seamless AJAX pagination.
+
+### Files Modified
+* [app/Http/Controllers/SearchPostController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/SearchPostController.php)
+* [resources/views/front_end/classic/pages/search-result.blade.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/resources/views/front_end/classic/pages/search-result.blade.php)
+* [public/front_end/classic/js/custom/search-news.js](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/public/front_end/classic/js/custom/search-news.js)
+
+### Code Comparison
+```javascript
+/* [search-news.js - buildPageUrl] */
+function buildPageUrl(p) {
+    var baseUrl = window.location.origin + window.location.pathname;
+    var params = new URLSearchParams();
+    var searchVal = pageSearchInput ? pageSearchInput.value.trim() : '';
+    if (searchVal) params.append('search', searchVal);
+    // append active channels, topics, sort filter...
+    params.set('page', p);
+    return baseUrl + '?' + params.toString();
+}
+```
+
+### Impact & Future Scalability
+* **Benefit:** Provides an ultra-responsive, consistent, deep-linkable search & filter experience matching NewsHunt design standards.
+* **Caution:** When adding new filters to the search page, ensure `buildPageUrl(p)` and `triggerAjaxFetch()` collect the new parameters.
+

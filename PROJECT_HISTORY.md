@@ -57,6 +57,18 @@ We added a static cache checking mechanism inside the composer closure in `AppSe
 2. **Eloquent Model Hydration Overhead:** Setting configurations are basic key-value strings. Querying them using Eloquent models (`Setting::select(...)->get()`) caused Laravel to instantiate **146 separate model instances** in memory, which consumes significant RAM and CPU.
 
 ### The Fix:
+* **Files Modified**:
+  * [TopicFrontController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/TopicFrontController.php)
+  * [CategoryController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/CategoryController.php)
+  * [SearchPostController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/SearchPostController.php)
+  * [helper.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Helpers/helper.php)
+* **Logic Changes**:
+  * Reused subscriber language IDs cached in `request()->attributes` to eliminate duplicate database lookup queries across Controllers and `AppServiceProvider` View Composer.
+  * Replaced `Setting::get()` and `Setting::where()` in `CategoryController.php` and `SearchPostController.php` with `request()->attributes` cached settings arrays, eliminating **290+ Setting Eloquent model hydrations** per request.
+  * Added `user_id > 0` check in `SearchPostController.php` to bypass 2 unnecessary guest queries (`user_id = 0`) on `channel_subscribers` and `topic_followers`.
+  * Added selective column selection (`select(...)`) to `Topic::select(...)`, `CategoryController`, and `SearchPostController` queries.
+  * Added `request()->attributes` theme slug caching to `getTheme()` in `helper.php` to eliminate repeated default theme queries per request across all pages.
+
 1. Added a request-level settings container `AppServiceProvider::$settingsCache`.
 2. Loaded settings once in `HomeController@index` using a raw query builder to prevent model instantiation, and cached it.
 3. Made `AppServiceProvider` and helper functions retrieve values directly from the cache.
@@ -775,8 +787,22 @@ Deferred AJAX loading for Navbar Category Dropdowns and homepage sliders (Most R
 * **Files Created/Modified**:
   * [.gitignore](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/.gitignore) (Added `/.claude`, `/.vscode`, and `/test_route_list.php`)
   * [test_route_list.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/test_route_list.php) (Deleted)
+
+### [2026-07-21] End-to-End Instant AJAX Search & Filtering Engine
+
+* **Feature**: Implemented instant AJAX live search, interactive channels/topics filter engine, centered header search input with subtitle query string, and custom NewsHunt pagination matching `vendor/custom-pagination.blade.php`.
+* **Files Modified**:
+  * [app/Http/Controllers/SearchPostController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/SearchPostController.php)
+  * [resources/views/front_end/classic/pages/search-result.blade.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/resources/views/front_end/classic/pages/search-result.blade.php)
+  * [public/front_end/classic/js/custom/search-news.js](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/public/front_end/classic/js/custom/search-news.js)
 * **Logic Changes**:
-  * Cleaned untracked files to ensure `git status` stays 100% clean and local editor configuration folders do not pollute remote repository commits.
+  * **Navbar Search Modal**: Integrated live search suggestions dropdown with `Enter` keypress redirect to `/posts?search=<query>`.
+  * **Centered Search Header**: Placed search input in centered container (`max-width: 450px; margin: 0 auto;`) and added dynamic inline subtitle sentence (`Showing 1 to 15 posts out of 753 Total for "query"`).
+  * **Channels Filter Normalization**: Stripped `'all'` values from `$channels` array input in `SearchPostController.php` so checking "All Channels" returns all items unfiltered without throwing invalid slug errors.
+  * **Clean Sort Filters**: Streamlined sort options to `most-recent` (Default), `most-read` (with 👁️ view counters and no artificial 7-day cutoffs), and `most-liked`.
+  * **Custom NewsHunt Pagination Renderer**: Updated `renderPagination(pagination)` in `search-news.js` to render the exact NewsHunt pagination component matching `vendor/custom-pagination.blade.php` (`<`, `1`, `2`, `...`, `5`, `>`).
+  * **Search Query Preservation**: Updated `buildPageUrl(p)` to dynamically collect current `#page_search_input` value and active filter selections when constructing pagination links, preserving query state seamlessly across page navigation.
+
 
 
 

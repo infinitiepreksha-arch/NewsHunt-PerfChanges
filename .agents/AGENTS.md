@@ -79,8 +79,9 @@ This document defines the strict, non-negotiable operational workflow that every
 * Present the changed files, diff snippets, and testing results to the user.
 * **STRICT GUARD:** **WAIT for the user to review the code changes and give permission to proceed.**
 
-### Phase 7: Automatic History Logging & File Tracking (MANDATORY)
-* **Rule:** At the end of every task execution, the agent MUST automatically update the history, tracking logs, and feature artifact archives without requiring prompts from the user.
+### Phase 7: History Logging & File Tracking (ONLY AFTER USER 'PROCEED' APPROVAL)
+* **STRICT GUARD:** Do NOT modify or update `PROJECT_HISTORY.md`, `FILE_CHANGES_LOG.md`, or any `.agents/` history logs until AFTER the user has reviewed the application code changes, tested them, and explicitly given permission to proceed.
+* **Rule:** Once the user gives explicit approval to proceed after code review, the agent MUST automatically update the history, tracking logs, and feature artifact archives without requiring additional prompts.
 * **Documentation Architecture:**
   1. **Global Project History ([PROJECT_HISTORY.md](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/PROJECT_HISTORY.md)):** Append a master summary of the task, logic changes, files modified, and verification results.
   2. **Codebase File Index ([FILE_CHANGES_LOG.md](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/FILE_CHANGES_LOG.md)):** Append entry listing modified application files and update the Master Go-To Index Table count.
