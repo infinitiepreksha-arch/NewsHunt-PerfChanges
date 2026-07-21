@@ -14,8 +14,8 @@ This document defines the strict, non-negotiable operational workflow that every
                                       │
                                       ▼
 +-------------------------------------------------------------------------------+
-| PHASE 2: Implementation Plan                                                  |
-| Create implementation plan document & present it for review                   |
+| PHASE 2: Single Living Implementation Plan                                     |
+| Create/Update implementation plan in the SAME file & present for review        |
 +-------------------------------------------------------------------------------+
                                       │
                                       ▼
@@ -38,14 +38,16 @@ This document defines the strict, non-negotiable operational workflow that every
                                       │
                                       ▼
 +-------------------------------------------------------------------------------+
-| PHASE 6: Code Review & User Feedback                                          |
-| Present changed files & diffs for user review. WAIT for user ok to proceed    |
+| PHASE 6: Code Review & User Feedback Loop (Recursive)                         |
+| Present changed files & diffs. If user requests changes/fixes after testing,   |
+| LOOP BACK to Phase 2 & update the SAME implementation_plan.md file in place!  |
 +-------------------------------------------------------------------------------+
-                                      │
+                                      │ (When User is 100% Satisfied)
                                       ▼
 +-------------------------------------------------------------------------------+
-| PHASE 7: History Logging & File Tracking                                      |
-| Update PROJECT_HISTORY.md and FILE_CHANGES_LOG.md                             |
+| PHASE 7: Session Finalization & Feature Folder Archiving                      |
+| Finalize task.md & walkthrough.md, archive into .agents/features/<feature>/,  |
+| and update PROJECT_HISTORY.md & FILE_CHANGES_LOG.md                           |
 +-------------------------------------------------------------------------------+
                                       │
                                       ▼
@@ -65,8 +67,9 @@ This document defines the strict, non-negotiable operational workflow that every
 * Explore all edge cases and scenarios. If stuck, uncertain, or weighing trade-offs, ask the user directly—work hand-in-hand to find the best fit for NewsHunt.
 * Exchange feedback until fully aligned on the best strategy before drafting the plan.
 
-### Phase 2 & 3: Implementation Plan & Explicit Approval
+### Phase 2 & 3: Single Living Implementation Plan & Explicit Approval
 * Draft a detailed implementation plan document (`implementation_plan.md`).
+* **Living Document Rule (In-Place Plan Iteration):** Always maintain a single `implementation_plan.md` throughout the feature lifecycle. If the user provides feedback, bug reports, or change requests during review/testing, **DO NOT create a new plan file**. Always update and refine the **same** `implementation_plan.md` file in place so the entire end-to-end planning history and revision trail remain consolidated in a single document.
 * **STRICT GUARD:** **STOP AND WAIT for explicit user approval** before making any code edits or running modifying scripts.
 
 ### Phase 4: Prudent Feature Branching Protocol
@@ -74,19 +77,20 @@ This document defines the strict, non-negotiable operational workflow that every
 * **Why:** Keeps `main` stable, enables trivial rollbacks, and prevents git merge conflicts on codebase modifications.
 
 
-### Phase 5 & 6: Minimal Code Changes & Code Review
+### Phase 5 & 6: Minimal Code Changes, Code Review & Recursive Feedback Loop
 * Implement minimal, production-ready changes following existing Laravel patterns, `FileService` WebP rules, and `SelectsFields` query projections.
 * Present the changed files, diff snippets, and testing results to the user.
+* **Recursive Feedback Loop:** If testing reveals issues or the user requests tweaks/revisions, loop back to Phase 2: update the **same** `implementation_plan.md` file in place (do not start a new file), present the updated plan for approval, execute changes, and re-present for testing recursively until the user is **100% satisfied**.
 * **STRICT GUARD:** **WAIT for the user to review the code changes and give permission to proceed.**
 
-### Phase 7: History Logging & File Tracking (ONLY AFTER USER 'PROCEED' APPROVAL)
-* **STRICT GUARD:** Do NOT modify or update `PROJECT_HISTORY.md`, `FILE_CHANGES_LOG.md`, or any `.agents/` history logs until AFTER the user has reviewed the application code changes, tested them, and explicitly given permission to proceed.
-* **Rule:** Once the user gives explicit approval to proceed after code review, the agent MUST automatically update the history, tracking logs, and feature artifact archives without requiring additional prompts.
+### Phase 7: History Logging & Feature Folder Archiving (ONLY AFTER FULL SATISFACTION)
+* **STRICT GUARD:** Do NOT modify or update `PROJECT_HISTORY.md`, `FILE_CHANGES_LOG.md`, or any `.agents/` history logs until AFTER the user has reviewed and tested the application code changes, is completely satisfied, and explicitly gives permission to proceed.
+* **Rule:** Once the user gives explicit approval to proceed after full satisfaction, the agent MUST automatically finalize session files (`task.md`, `walkthrough.md`), archive them alongside `implementation_plan.md` inside `.agents/features/YYYY-MM-DD_<feature_name>/`, and update history logs without requiring additional prompts.
 * **Documentation Architecture:**
   1. **Global Project History ([PROJECT_HISTORY.md](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/PROJECT_HISTORY.md)):** Append a master summary of the task, logic changes, files modified, and verification results.
   2. **Codebase File Index ([FILE_CHANGES_LOG.md](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/FILE_CHANGES_LOG.md)):** Append entry listing modified application files and update the Master Go-To Index Table count.
   3. **Feature Artifact Archive Folder (inside `.agents/features/`):**
-     * Save the 3 session planning files (`implementation_plan.md`, `task.md`, `walkthrough.md`) into a dedicated feature folder: `.agents/features/YYYY-MM-DD_<feature_name>/`.
+     * Save all 3 session planning files (`implementation_plan.md`, `task.md`, `walkthrough.md`) into a dedicated feature folder: `.agents/features/YYYY-MM-DD_<feature_name>/`.
   4. **Specialized Deep-Dive Logs (inside `.agents/`):**
      * **Performance Optimizations:** If the task involves speed, caching, queries, memory, or Core Web Vitals, append to [.agents/performance_optimization_history.md](file:///.agents/performance_optimization_history.md) using the required format (*Root Cause, Solution & Rationale, Files Modified, Code Comparison Diffs, Impact & Scalability*).
      * **New Features & Functional Updates:** If the task involves a new feature, UI enhancement, or non-performance change, append to [.agents/feature_development_history.md](file:///.agents/feature_development_history.md) using the required format (*Feature Need, Solution & Rationale, Files Modified, Code Comparison Diffs, Impact & Scalability*).
@@ -112,6 +116,8 @@ This document defines the strict, non-negotiable operational workflow that every
 8. **Pragmatic & Context-Driven Problem Solving:** Never jump to conclusions or blindly implement textbook patterns. Always analyze solutions through the lens of *this specific project, scenario, data scale, and CodeCanyon maintainability*. If uncertain or facing trade-offs, ask the user to collaborate hand-in-hand.
 9. **Browser & Autonomous Subagent Authorization Rule:** NEVER launch browser subagents (`browser_subagent`) or autonomous subagent modes without explicit user permission. Always ask the user first, explain why agentic mode is necessary, and provide clear step-by-step instructions on how the user can provide the required information directly to move forward without launching subagents. Only launch a subagent if the user is unable to provide the details and explicitly approves starting agentic mode.
 10. **Code Reusability & Scalability:** Always write modular, reusable, and scalable code that integrates seamlessly with existing NewsHunt architectural patterns (e.g. `SelectsFields` trait, `FileService`, `CachingService`, Blade partials, and global helpers) to keep the codebase clean and maintainable.
+11. **Single Living Implementation Plan & Recursive Loop:** Maintain a single `implementation_plan.md` file throughout the entire feature development lifecycle. Never generate multiple plan files for iterative feedback. Recursively update the same plan file until testing passes and full user satisfaction is achieved prior to feature folder archiving.
+
 
 
 

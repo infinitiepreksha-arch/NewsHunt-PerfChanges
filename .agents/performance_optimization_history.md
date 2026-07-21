@@ -839,37 +839,33 @@ Even after Phase 1, the post page still executed duplicate subscriber languages 
 
 ---
 
-## 18. Topic Directory, Category News Feed & All Posts Page Optimization (Phase 1.1)
+## 18. Topic Directory & Category News Feed Optimization (Phase 1.1)
 
 ### Root Cause
-1. **Setting Model Hydration Blowup**: `CategoryController.php` and `SearchPostController.php` executed `Setting::get()` multiple times, instantiating **290+ separate Eloquent Setting model objects** in memory to retrieve basic strings like default image and post placeholder labels.
-2. **Guest Subscriber Queries (`user_id = 0`)**: `SearchPostController.php` executed `ChannelSubscriber::where('user_id', 0)` and `TopicFollower::where('user_id', 0)` on every guest request.
-3. **Duplicate Subscriber Languages Lookups**: `NewsLanguageSubscriber::where('user_id', $userId)` executed repeatedly per request across controllers.
+1. **Setting Model Hydration Blowup**: Line 77 of `CategoryController.php` executed `Setting::get()`, instantiating **146 separate Eloquent Setting model objects** in memory to retrieve a single placeholder string.
+2. **Duplicate Subscriber Languages Lookups**: `NewsLanguageSubscriber::where('user_id', $userId)` executed twice per request (once in `TopicFrontController` or `CategoryController`, and again in `AppServiceProvider`).
+3. **Unprojected Eloquent Selection**: Category queries retrieved `SELECT *` from `posts`, forcing Laravel to parse and load heavy HTML `description` text blobs into memory during grid pagination.
 
 ### Solution & Rationale
-1. **Request-Scoped Settings Cache**: Replaced `Setting::get()` with `$request->attributes` cached settings collection (`$settingsCache->get(...)`), eliminating 290+ Eloquent Setting model hydrations per request.
-2. **Bypass Guest Subscriber Queries**: Added `$userId ? ... : []` check to prevent running SQL queries against `channel_subscribers` and `topic_followers` when `$userId == 0`.
-3. **Request Attribute Language Cache**: Shared resolved subscriber language IDs via `request()->attributes->set('subscribed_language_ids', ...)`.
-4. **Theme Query Request Cache**: Wrapped `getTheme()` in `helper.php` with `$request->attributes` caching to eliminate repeated default theme SQL queries.
+1. **Request-Scoped Settings Cache**: Replaced `Setting::get()` and `Setting::where()` with `$request->attributes` cached settings collection (`$settingsCache->get('news_lable_place_holder')`), returning stdClass arrays with ZERO Eloquent setting model hydrations.
+2. **Request Attribute Language Cache**: Shared resolved subscriber language IDs via `request()->attributes->set('subscribed_language_ids', ...)`.
+3. **Selective Column Selection**: Constrained `Topic::select(...)` and `Post::select(...)` column fields.
+4. **Theme Query Request Cache**: Wrapped `getTheme()` in `helper.php` with `$request->attributes` caching to eliminate repeated default theme SQL queries on every page render.
 
 ### Files Modified
 * [TopicFrontController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/TopicFrontController.php)
 * [CategoryController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/CategoryController.php)
-* [SearchPostController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/SearchPostController.php)
 * [helper.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Helpers/helper.php)
 
 ### Code Comparison
 ```diff
---- [ORIGINAL CODE - SearchPostController.php]
-+++ [OPTIMIZED CODE - SearchPostController.php]
-@@ -42,2 +42,2 @@
--        $channel_ids = ChannelSubscriber::where('user_id', Auth::user()->id ?? 0)->pluck('channel_id')->toArray();
--        $topic_ids   = TopicFollower::where('user_id', Auth::user()->id ?? 0)->pluck('topic_id')->toArray();
-+        $channel_ids = $userId ? ChannelSubscriber::where('user_id', $userId)->pluck('channel_id')->toArray() : [];
-+        $topic_ids   = $userId ? TopicFollower::where('user_id', $userId)->pluck('topic_id')->toArray() : [];
-@@ -117,2 +117,12 @@
--        $post_label   = Setting::get()->where('name', 'news_label_place_holder')->first();
--        $defaultImage = Setting::get()->where('name', 'default_image')->first();
+--- [ORIGINAL CODE - CategoryController.php]
++++ [OPTIMIZED CODE - CategoryController.php]
+@@ -23,15 +23,26 @@
+-        $defaultImage = Setting::where('name', 'default_image')->first()->value ?? null;
+-        if ($userId) {
+-            $subscribedLanguageIds = NewsLanguageSubscriber::where('user_id', $userId)->pluck('news_language_id');
+-        } else { ... }
 +        if ($request->attributes->has('settings_cache')) {
 +            $settingsCache = $request->attributes->get('settings_cache');
 +        } else {
@@ -877,13 +873,14 @@ Even after Phase 1, the post page still executed duplicate subscriber languages 
 +            $settingsCache = $settingsList->keyBy('name');
 +            $request->attributes->set('settings_cache', $settingsCache);
 +        }
-+        $postLabelVal = $settingsCache->get('news_label_place_holder')->value ?? '';
-+        $post_label   = (object)['value' => $postLabelVal];
-+        $defaultImageVal = $settingsCache->get('default_image')->value ?? null;
-+        $defaultImage    = (object)['value' => $defaultImageVal];
++        $defaultImage = $settingsCache->get('default_image')->value ?? null;
++        $postLabelValue = $settingsCache->get('news_lable_place_holder')->value ?? '';
++        $post_lable = (object)['value' => $postLabelValue];
+
+-        $post_lable = Setting::get()->where('name', 'news_lable_place_holder')->first();
 ```
 
 ### Impact & Scalability
-* **`/posts`**: Hydrated models drop from **382 Models down to ~40 Models** (~90% memory reduction); response time drops from **2.47s down to < 400ms**.
-* **Guest Queries**: Bypasses 2 useless queries on `channel_subscribers` and `topic_followers` for guest visitors.
+* **`/topics`**: Reduced queries from `10 Statements` to `9 Statements` (0 duplicates).
+* **`/topics/world`**: Reduced queries from `12 Statements` to `9 Statements` (25% query reduction, 0 duplicates); Eloquent model hydrations dropped from `163 Models` down to `17 Models` (~90% RAM reduction).
 

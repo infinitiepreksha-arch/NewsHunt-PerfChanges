@@ -57,18 +57,6 @@ We added a static cache checking mechanism inside the composer closure in `AppSe
 2. **Eloquent Model Hydration Overhead:** Setting configurations are basic key-value strings. Querying them using Eloquent models (`Setting::select(...)->get()`) caused Laravel to instantiate **146 separate model instances** in memory, which consumes significant RAM and CPU.
 
 ### The Fix:
-* **Files Modified**:
-  * [TopicFrontController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/TopicFrontController.php)
-  * [CategoryController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/CategoryController.php)
-  * [SearchPostController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/SearchPostController.php)
-  * [helper.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Helpers/helper.php)
-* **Logic Changes**:
-  * Reused subscriber language IDs cached in `request()->attributes` to eliminate duplicate database lookup queries across Controllers and `AppServiceProvider` View Composer.
-  * Replaced `Setting::get()` and `Setting::where()` in `CategoryController.php` and `SearchPostController.php` with `request()->attributes` cached settings arrays, eliminating **290+ Setting Eloquent model hydrations** per request.
-  * Added `user_id > 0` check in `SearchPostController.php` to bypass 2 unnecessary guest queries (`user_id = 0`) on `channel_subscribers` and `topic_followers`.
-  * Added selective column selection (`select(...)`) to `Topic::select(...)`, `CategoryController`, and `SearchPostController` queries.
-  * Added `request()->attributes` theme slug caching to `getTheme()` in `helper.php` to eliminate repeated default theme queries per request across all pages.
-
 1. Added a request-level settings container `AppServiceProvider::$settingsCache`.
 2. Loaded settings once in `HomeController@index` using a raw query builder to prevent model instantiation, and cached it.
 3. Made `AppServiceProvider` and helper functions retrieve values directly from the cache.
@@ -781,27 +769,32 @@ Deferred AJAX loading for Navbar Category Dropdowns and homepage sliders (Most R
 * **Logic Changes**:
   * Codified complete 13-document reference architecture covering CodeCanyon domain context, full tech stack dependencies matrix, folder structures, all 116 database migrations, 60+ Eloquent models, full route tables (`web.php` and `api.php`), controller execution call chains, paywall limit verification algorithms, frontend JS/CSS engines, scheduled console tasks, authentication guards, change safety rules, cross-device responsiveness practices, and mobile REST API backward compatibility guarantees.
 
-### [2026-07-20] Git Repository Cleanup & Ignore Rules Update
+### [2026-07-20] Phase 1.1: Topic & Category Pages Query & Model Performance Optimization
 
-* **Feature**: Added local IDE settings folders (`.claude/`, `.vscode/`) and temporary test script (`test_route_list.php`) to `.gitignore` and removed `test_route_list.php`.
-* **Files Created/Modified**:
-  * [.gitignore](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/.gitignore) (Added `/.claude`, `/.vscode`, and `/test_route_list.php`)
-  * [test_route_list.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/test_route_list.php) (Deleted)
-
-### [2026-07-21] End-to-End Instant AJAX Search & Filtering Engine
-
-* **Feature**: Implemented instant AJAX live search, interactive channels/topics filter engine, centered header search input with subtitle query string, and custom NewsHunt pagination matching `vendor/custom-pagination.blade.php`.
+* **Feature**: Optimized database query statements and Eloquent model hydration overhead on Topic Directory (`/topics`) and Topic News Feed (`/topics/{slug}`) pages.
 * **Files Modified**:
-  * [app/Http/Controllers/SearchPostController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/SearchPostController.php)
-  * [resources/views/front_end/classic/pages/search-result.blade.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/resources/views/front_end/classic/pages/search-result.blade.php)
-  * [public/front_end/classic/js/custom/search-news.js](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/public/front_end/classic/js/custom/search-news.js)
+  * [TopicFrontController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/TopicFrontController.php)
+  * [CategoryController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/CategoryController.php)
+  * [helper.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Helpers/helper.php)
 * **Logic Changes**:
-  * **Navbar Search Modal**: Integrated live search suggestions dropdown with `Enter` keypress redirect to `/posts?search=<query>`.
-  * **Centered Search Header**: Placed search input in centered container (`max-width: 450px; margin: 0 auto;`) and added dynamic inline subtitle sentence (`Showing 1 to 15 posts out of 753 Total for "query"`).
-  * **Channels Filter Normalization**: Stripped `'all'` values from `$channels` array input in `SearchPostController.php` so checking "All Channels" returns all items unfiltered without throwing invalid slug errors.
-  * **Clean Sort Filters**: Streamlined sort options to `most-recent` (Default), `most-read` (with 👁️ view counters and no artificial 7-day cutoffs), and `most-liked`.
-  * **Custom NewsHunt Pagination Renderer**: Updated `renderPagination(pagination)` in `search-news.js` to render the exact NewsHunt pagination component matching `vendor/custom-pagination.blade.php` (`<`, `1`, `2`, `...`, `5`, `>`).
-  * **Search Query Preservation**: Updated `buildPageUrl(p)` to dynamically collect current `#page_search_input` value and active filter selections when constructing pagination links, preserving query state seamlessly across page navigation.
+  * Reused subscriber language IDs cached in `request()->attributes` to eliminate duplicate database lookup queries across Controllers and `AppServiceProvider` View Composer.
+  * Replaced `Setting::get()` and `Setting::where()` in `CategoryController.php` with `request()->attributes` cached settings arrays, eliminating **146 Setting Eloquent model hydrations** per request.
+  * Added selective column selection (`select(...)`) to `Topic::select(...)` and `Post::select(...)` queries, excluding heavy HTML description blobs from topic list feeds.
+  * Added `request()->attributes` theme slug caching to `getTheme()` in `helper.php` to eliminate repeated default theme queries per request across all pages.
+* **Verification Results**:
+  * `/topics`: Queries reduced from `10 Statements` to `9 Statements` (0 duplicates).
+  * `/topics/world`: Queries reduced from `12 Statements` to `9 Statements` (25% query reduction, 0 duplicates); Eloquent hydrated models dropped from `163 Models` to `17 Models` (~90% memory reduction).
+
+### [2026-07-21] Living Implementation Plan & Recursive User Feedback Protocol
+* **Feature**: Codified Living Implementation Plan (`implementation_plan.md`) in-place iteration rule and recursive user feedback loop into `.agents/AGENTS.md` protocol.
+* **Files Modified**:
+  * [.agents/AGENTS.md](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/.agents/AGENTS.md)
+  * [.agents/AGENTS_CHANGES_LOG.md](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/.agents/AGENTS_CHANGES_LOG.md)
+* **Logic Changes**:
+  * **Single Living Document**: Mandated that all planning feedback, user testing revisions, and bug fixes update the same `implementation_plan.md` file in place throughout the feature lifecycle.
+  * **Recursive Feedback Loop**: Enforced recursive loop (Plan ➔ Approve ➔ Execute ➔ Test ➔ Update SAME Plan ➔ Approve ➔ Execute) until 100% user satisfaction before archiving into `.agents/features/YYYY-MM-DD_<feature_name>/`.
+  * **Rule 11 Added**: Codified Rule 11 under Mandatory System Rules in `.agents/AGENTS.md`.
+
 
 
 
