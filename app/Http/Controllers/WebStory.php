@@ -13,14 +13,24 @@ use Illuminate\Support\Facades\Cookie;
 
 class WebStory extends Controller
 {
-    public function index(Request $request)
+    private function getSettingsCache(?Request $request = null)
     {
-        $title           = __('frontend-labels.web_stories.title');
-        $topics          = Topic::all();
-        $theme           = getTheme();
-        $selectedTopicId = $request->query('topic');
-        $userId          = Auth::user()->id ?? 0;
+        $request = $request ?? request();
+        if ($request->attributes->has('settings_cache')) {
+            return $request->attributes->get('settings_cache');
+        }
+        $settingsList = \Illuminate\Support\Facades\DB::table('settings')->select('name', 'value', 'type')->get();
+        $settingsCache = $settingsList->keyBy('name');
+        $request->attributes->set('settings_cache', $settingsCache);
+        return $settingsCache;
+    }
 
+    private function getSubscribedLanguageIds($userId, ?Request $request = null)
+    {
+        $request = $request ?? request();
+        if ($request->attributes->has('subscribed_language_ids')) {
+            return $request->attributes->get('subscribed_language_ids');
+        }
         if ($userId) {
             $subscribedLanguageIds = NewsLanguageSubscriber::where('user_id', $userId)->pluck('news_language_id');
         } else {
@@ -28,12 +38,31 @@ class WebStory extends Controller
             if ($sessionLanguageId) {
                 $subscribedLanguageIds = collect([$sessionLanguageId]);
             } else {
-                $defaultActiveLanguage = NewsLanguage::where('is_active', 1)->first();
+                $defaultActiveLanguage = \App\Providers\AppServiceProvider::$activeLanguageCache ?? NewsLanguage::where('is_active', 1)->first();
                 $subscribedLanguageIds = $defaultActiveLanguage ? collect([$defaultActiveLanguage->id]) : collect();
             }
         }
+        $request->attributes->set('subscribed_language_ids', $subscribedLanguageIds);
+        return $subscribedLanguageIds;
+    }
 
-        $stories = Story::with(['story_slides', 'topic'])
+    public function index(Request $request)
+    {
+        $title           = __('frontend-labels.web_stories.title');
+        $theme           = getTheme();
+        $selectedTopicId = $request->query('topic');
+        $userId          = Auth::user()->id ?? 0;
+
+        $settingsCache = $this->getSettingsCache($request);
+        $subscribedLanguageIds = $this->getSubscribedLanguageIds($userId, $request);
+
+        $stories = Story::select('id', 'title', 'slug', 'topic_id', 'news_language_id', 'story_count', 'image_size_type', 'created_at')
+            ->with([
+                'story_slides',
+                'topic' => function ($query) {
+                    $query->select('id', 'name', 'slug');
+                }
+            ])
             ->whereHas('story_slides')
             ->when($selectedTopicId, function (Builder $query) use ($selectedTopicId) {
                 return $query->where('topic_id', $selectedTopicId);
@@ -43,16 +72,14 @@ class WebStory extends Controller
             })
             ->get();
 
-        $filteredTopics = $topics->filter(function ($topic) use ($stories) {
-            return $stories->contains('topic_id', $topic->id);
-        });
+        $filteredTopics = $stories->pluck('topic')->filter()->unique('id')->values();
 
         $dailyLimitReached        = false;
         $subscriptionLimitReached = false;
 
         $user = auth()->user();
 
-        $freeTrialLimit = (int) (Setting::where('name', 'free_trial_story_limit')->value('value') ?? 10);
+        $freeTrialLimit = (int) ($settingsCache->get('free_trial_story_limit')->value ?? 10);
         $isDailyLimitEligible = false;
 
         // Listing page: do NOT increment story count here.
@@ -83,24 +110,15 @@ class WebStory extends Controller
 
     public function show(Topic $topic, Story $story)
     {
-        $socialsettings = Setting::pluck('value', 'name');
+        $request = request();
+        $settingsCache = $this->getSettingsCache($request);
+        $socialsettings = $settingsCache->map(fn($item) => $item->value);
 
         if ($story->topic_id !== $topic->id) {
             abort(404);
         }
         $userId = auth()->user()->id ?? 0;
-
-        if ($userId) {
-            $subscribedLanguageIds = NewsLanguageSubscriber::where('user_id', $userId)->pluck('news_language_id');
-        } else {
-            $sessionLanguageId = session('selected_news_language');
-            if ($sessionLanguageId) {
-                $subscribedLanguageIds = collect([$sessionLanguageId]);
-            } else {
-                $defaultActiveLanguage = NewsLanguage::where('is_active', 1)->first();
-                $subscribedLanguageIds = $defaultActiveLanguage ? collect([$defaultActiveLanguage->id]) : collect();
-            }
-        }
+        $subscribedLanguageIds = $this->getSubscribedLanguageIds($userId, $request);
 
         if ($subscribedLanguageIds->isNotEmpty() && ! $subscribedLanguageIds->contains($story->news_language_id)) {
             abort(404); // or redirect to webstories.index with message
@@ -110,7 +128,7 @@ class WebStory extends Controller
         $dailyLimitReached        = false;
         $subscriptionLimitReached = false;
 
-        $freeTrialLimit = (int) (Setting::where('name', 'free_trial_story_limit')->value('value') ?? 10);
+        $freeTrialLimit = (int) ($settingsCache->get('free_trial_story_limit')->value ?? 10);
         $isDailyLimitEligible = false;
 
         if ($user && $user->subscription) {
@@ -133,7 +151,13 @@ class WebStory extends Controller
 
         $this->storyCount($story);
 
-        $nextStoryQuery = Story::with(['story_slides', 'topic'])
+        $nextStoryQuery = Story::select('id', 'title', 'slug', 'topic_id', 'news_language_id', 'image_size_type')
+            ->with([
+                'story_slides',
+                'topic' => function ($query) {
+                    $query->select('id', 'name', 'slug');
+                }
+            ])
             ->where('topic_id', $topic->id)
             ->where('id', '>', $story->id)
             ->whereHas('story_slides');
@@ -145,7 +169,13 @@ class WebStory extends Controller
         $nextStory = $nextStoryQuery->first();
 
         if (! $nextStory) {
-            $fallbackQuery = Story::with(['story_slides', 'topic'])
+            $fallbackQuery = Story::select('id', 'title', 'slug', 'topic_id', 'news_language_id', 'image_size_type')
+                ->with([
+                    'story_slides',
+                    'topic' => function ($query) {
+                        $query->select('id', 'name', 'slug');
+                    }
+                ])
                 ->whereHas('story_slides')
                 ->where('id', '!=', $story->id);
             if ($subscribedLanguageIds->isNotEmpty()) {
@@ -177,13 +207,24 @@ class WebStory extends Controller
     public function storyByTopic(Topic $topic)
     {
         $title  = __('frontend-labels.web_stories.title');
-        $topics = Topic::all();
+        $theme  = getTheme();
+        $request = request();
+        $settingsCache = $this->getSettingsCache($request);
+        $userId = Auth::user()->id ?? 0;
+        $subscribedLanguageIds = $this->getSubscribedLanguageIds($userId, $request);
 
-        $theme = getTheme();
-
-        $stories = Story::with(['story_slides', 'topic'])
+        $stories = Story::select('id', 'title', 'slug', 'topic_id', 'news_language_id', 'story_count', 'image_size_type', 'created_at')
+            ->with([
+                'story_slides',
+                'topic' => function ($query) {
+                    $query->select('id', 'name', 'slug');
+                }
+            ])
             ->where('topic_id', $topic->id)
             ->whereHas('story_slides')
+            ->when($subscribedLanguageIds->isNotEmpty(), function (Builder $query) use ($subscribedLanguageIds) {
+                return $query->whereIn('news_language_id', $subscribedLanguageIds);
+            })
             ->latest()
             ->paginate(12);
 
@@ -194,7 +235,7 @@ class WebStory extends Controller
         $subscriptionLimitReached = false;
 
         $user = auth()->user();
-        $freeTrialLimit = (int) (Setting::where('name', 'free_trial_story_limit')->value('value') ?? 10);
+        $freeTrialLimit = (int) ($settingsCache->get('free_trial_story_limit')->value ?? 10);
         $isDailyLimitEligible = false;
 
         // Only check subscription status so the JS knows about limits.
@@ -214,7 +255,6 @@ class WebStory extends Controller
             'topic',
             'theme',
             'totalStories',
-            'topics',
             'freeTrialLimit',
             'isDailyLimitEligible',
             'dailyLimitReached',

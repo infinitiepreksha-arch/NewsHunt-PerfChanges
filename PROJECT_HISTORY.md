@@ -797,9 +797,22 @@ Deferred AJAX loading for Navbar Category Dropdowns and homepage sliders (Most R
   * Wrapped `withCount(['subscribers as is_followed' => ...])` on `/channels` in a `$user ? ... : ...` check to avoid executing unnecessary subqueries (`where user_id = ''`) for unauthenticated visitors.
   * Integrated `subscribers as is_followed` `withCount` subquery directly into `$channelData` query on `/channels/{slug}`, eliminating the extra `ChannelSubscriber::where('channel_id', ...)` SQL query and model hydration.
   * Added explicit column selection (`Channel::select(...)`) and added `'channels.slug as channel_slug'` to `Post::select(...)`.
+### [2026-07-21] Web Stories Performance & Query Optimization
+
+* **Feature**: Optimized database query execution, Eloquent model hydrations, and duplicate queries for Web Stories Directory (`/webstories`), Single Web Story Reader (`/webstories/{topic}/{story}`), and Web Stories by Topic (`/webstories/{topic}`) pages.
+* **Files Modified**:
+  * [WebStory.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/WebStory.php)
+* **Logic Changes**:
+  * Replaced `Setting::pluck('value', 'name')` and `Setting::where('name', 'free_trial_story_limit')` with `$request->attributes` cached settings (`$settingsCache`), completely eliminating **146 Setting Eloquent model hydrations** per story reader hit.
+  * Shared `$subscribedLanguageIds` via `$request->attributes->set('subscribed_language_ids', ...)`, eliminating duplicate `news_languages_subscribers` queries in `AppServiceProvider`.
+  * Computed `$filteredTopics` on `/webstories` directly in memory from the eagerly-loaded `$stories` collection (`$stories->pluck('topic')->filter()->unique('id')->values()`), eliminating 1 SQL query.
+  * Removed unused `Topic::all()` query from `storyByTopic()`, eliminating 1 SQL query and **39 unused `Topic` model hydrations**.
+  * Added selective column projections (`Story::select(...)`, `Topic::select(...)`) across all methods.
 * **Verification Results**:
-  * `/channels`: Queries reduced from `11 Statements` (2 duplicates) down to `9 Statements` (0 duplicates); Models reduced from `7 Models` down to `6 Models` (0 Setting models).
-  * `/channels/{slug}`: Queries reduced from `14 Statements` (2 duplicates) down to `10 Statements` (0 duplicates); Models reduced from `20 Models` down to `18 Models` (0 Setting, 0 Subscriber models).
+  * `/webstories`: Queries reduced from `15 Statements` (2 duplicates) down to `12 Statements` (0 duplicates); Models reduced from `63 Models` down to `25 Models` (3 Topic models).
+  * `/webstories/{topic}/{story}`: Queries reduced from `20 Statements` (2 duplicates) down to `17 Statements` (0 duplicates, incl. 2 updates); Models reduced from `155 Models` down to `12 Models` (0 Setting models).
+  * `/webstories/{topic}`: Queries reduced from `15 Statements` down to `14 Statements` (0 duplicates); Models reduced from `51 Models` down to `14 Models` (2 Topic models).
+
 
 
 

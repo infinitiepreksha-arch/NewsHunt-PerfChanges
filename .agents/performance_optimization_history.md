@@ -929,8 +929,56 @@ Even after Phase 1, the post page still executed duplicate subscriber languages 
 +        $subscriber = Auth::check() ? ($channelData->is_followed ? 1 : null) : 'unauthorized';
 ```
 
+---
+
+## 20. Web Stories Directory & Story Reader Optimization
+
+### Root Cause
+1. **Setting Model Hydration Blowup**: `Setting::pluck('value', 'name')` on `/webstories/{topic}/{story}` instantiated **146 full Eloquent Setting models** into memory on every single request. `Setting::where('name', 'free_trial_story_limit')` executed extra DB queries across all methods.
+2. **Unconstrained Topic Model Hydration**: `Topic::all()` on `/webstories` and `/webstories/{topic}` instantiated 40 Eloquent `Topic` models in memory only to filter or ignore them.
+3. **Duplicate News Language Subscriber Lookups**: `NewsLanguageSubscriber::where('user_id', $userId)` executed in `WebStory.php` and again in `AppServiceProvider`.
+4. **Duplicate Topic Filter Query**: `/webstories` executed a separate `SELECT id, name, slug FROM topics WHERE EXISTS...` query for `$filteredTopics` when topics were already eager-loaded in `$stories`.
+
+### Solution & Rationale
+1. **Request-Scoped Settings Cache**: Replaced `Setting::pluck(...)` and `Setting::where(...)` with `$request->attributes` cached settings collection (`$settingsCache`), completely eliminating **146 Setting model hydrations** per story reader hit.
+2. **Request Attribute Language Cache**: Shared resolved `$subscribedLanguageIds` via `$request->attributes->set('subscribed_language_ids', ...)` to reuse across `AppServiceProvider`.
+3. **In-Memory Collection Pluck**: Computed `$filteredTopics` on `/webstories` directly in memory via `$stories->pluck('topic')->filter()->unique('id')->values()`, saving 1 SQL statement.
+4. **Removed Unused Topic Query**: Removed `$topics = Topic::all()` from `storyByTopic()`, saving 1 SQL statement and 39 unused `Topic` model hydrations.
+5. **Selective Column Projections**: Constrained `Story::select(...)` and `Topic::select(...)` fields across all endpoints.
+
+### Files Modified
+* [WebStory.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/WebStory.php)
+
+### Code Comparison
+```diff
+--- [ORIGINAL CODE - WebStory.php]
++++ [OPTIMIZED CODE - WebStory.php]
+@@ -19,16 +19,25 @@
+-        $topics          = Topic::all();
+         $theme           = getTheme();
+         $selectedTopicId = $request->query('topic');
+         $userId          = Auth::user()->id ?? 0;
+
++        $settingsCache = $this->getSettingsCache($request);
++        $subscribedLanguageIds = $this->getSubscribedLanguageIds($userId, $request);
+
+-        $stories = Story::with(['story_slides', 'topic'])
++        $stories = Story::select('id', 'title', 'slug', 'topic_id', 'news_language_id', 'story_count', 'image_size_type', 'created_at')
++            ->with(['story_slides', 'topic' => fn($q) => $q->select('id', 'name', 'slug')])
+             ->whereHas('story_slides')
+             ->get();
+
+-        $filteredTopics = $topics->filter(function ($topic) use ($stories) { ... });
++        $filteredTopics = $stories->pluck('topic')->filter()->unique('id')->values();
+
+-        $socialsettings = Setting::pluck('value', 'name');
++        $socialsettings = $settingsCache->map(fn($item) => $item->value);
+```
+
 ### Impact & Scalability
-* **`/channels`**: Reduced queries from `11 Statements` to `9 Statements` (0 duplicates); Models reduced from `7 Models` down to `6 Models` (0 Setting models).
-* **`/channels/{slug}`**: Reduced queries from `14 Statements` to `10 Statements` (0 duplicates); Models reduced from `20 Models` down to `18 Models` (0 Setting, 0 Subscriber models).
+* **`/webstories`**: Reduced queries from `15 Statements` (2 duplicates) down to `12 Statements` (0 duplicates); Models reduced from `63 Models` down to `25 Models` (3 Topic models).
+* **`/webstories/{topic}/{story}`**: Reduced queries from `20 Statements` (2 duplicates) down to `17 Statements` (0 duplicates, incl. 2 updates); Models reduced from `155 Models` down to `12 Models` (0 Setting models).
+* **`/webstories/{topic}`**: Reduced queries from `15 Statements` down to `14 Statements` (0 duplicates); Models reduced from `51 Models` down to `14 Models` (2 Topic models).
+
 
 

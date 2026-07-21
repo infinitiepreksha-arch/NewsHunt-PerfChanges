@@ -200,11 +200,16 @@ This document is the master log of all feature updates, performance optimization
 * **Files Changed:**
   * [app/Http/Controllers/ChannelFrontController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/ChannelFrontController.php)
 
+### 19. [2026-07-21] Web Stories Performance & Query Optimization
+* **Task Description:** Optimized query execution, Eloquent model hydrations, and duplicate queries for Web Stories Directory (`/webstories`), Single Web Story Reader (`/webstories/{topic}/{story}`), and Web Stories by Topic (`/webstories/{topic}`). Replaced `Setting::pluck('value', 'name')` to eliminate **146 Setting model hydrations**, shared subscribed language IDs via request attributes, derived `$filteredTopics` in-memory from eager-loaded stories, removed unused `$topics` query in `storyByTopic()`, and applied selective column projections.
+* **Files Changed:**
+  * [app/Http/Controllers/WebStory.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/WebStory.php)
+
 ---
 
 ## 📌 Master Go-To Index of All Changed Codebase Files
 
-**Total Unique Codebase Files Modified/Created Till Now:** 44 Files
+**Total Unique Codebase Files Modified/Created Till Now:** 45 Files
 
 
 | # | File Path | Primary Task / Feature | Date Modified |
@@ -222,7 +227,9 @@ This document is the master log of all feature updates, performance optimization
 | 11 | [app/Http/Controllers/SearchPostController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/SearchPostController.php) | Multi-Table Subquery Union Search | 2026-07-16 |
 | 12 | [app/Http/Controllers/CategoryController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/CategoryController.php) | Topic Post Query & Setting Optimization | 2026-07-20 |
 | 13 | [app/Http/Controllers/TopicFrontController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/TopicFrontController.php) | Topic Grid Query Optimization | 2026-07-20 |
-| 14 | [app/Http/Controllers/AdminControllers/PostController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/AdminControllers/PostController.php) | WebP Image Upload Compression | 2026-07-10 |
+| 14 | [app/Http/Controllers/ChannelFrontController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/ChannelFrontController.php) | Channel Grid & Profile Query Optimization | 2026-07-21 |
+| 15 | [app/Http/Controllers/WebStory.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/WebStory.php) | Web Stories Query & Model Hydration Optimization | 2026-07-21 |
+| 16 | [app/Http/Controllers/AdminControllers/PostController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/AdminControllers/PostController.php) | WebP Image Upload Compression | 2026-07-10 |
 | 15 | [app/Http/Controllers/AdminControllers/AudioPostAdminController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/AdminControllers/AudioPostAdminController.php) | WebP Uploads & Constants Cleanups | 2026-07-10 |
 | 16 | [app/Http/Controllers/AdminControllers/VideoAdminController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/AdminControllers/VideoAdminController.php) | WebP Image Upload Compression | 2026-07-10 |
 | 17 | [app/Http/Controllers/AdminControllers/NewsLanguageController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/AdminControllers/NewsLanguageController.php) | WebP Flag Compression | 2026-07-11 |
