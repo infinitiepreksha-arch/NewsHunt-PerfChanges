@@ -614,14 +614,14 @@ Route::prefix('admin')->middleware(['admin.locale', 'auth'])->group(function () 
     });
 
     /************ Starts Commands  **************/
-    Route::get('clear', static function () {
-        Artisan::call('config:clear');
-        Artisan::call('view:clear');
-        Artisan::call('cache:clear');
-        Artisan::call('optimize:clear');
-        Artisan::call('debugbar:clear');
-        return redirect()->back();
-    });
+    // Route::get('clear', static function () {
+    //     Artisan::call('config:clear');
+    //     Artisan::call('view:clear');
+    //     Artisan::call('cache:clear');
+    //     Artisan::call('optimize:clear');
+    //     Artisan::call('debugbar:clear');
+    //     return redirect()->back();
+    // });
     Route::get('/linkstorage', function () {
         Artisan::call('storage:link');
     });
@@ -700,3 +700,4 @@ Route::group(['prefix' => 'install'], static function () {
     Route::get('purchase-code', [InstallerController::class, 'purchaseCodeIndex'])->name('install.purchase-code');
     Route::post('purchase-code', [InstallerController::class, 'checkPurchaseCode'])->name('install.purchase-code.post');
 });
+
