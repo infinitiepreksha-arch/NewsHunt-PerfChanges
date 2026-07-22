@@ -1024,6 +1024,62 @@ Even after Phase 1, the post page still executed duplicate subscriber languages 
 * **`/e-newspaper`**: Reduced queries from `21 Statements` (6 duplicates) down to `10 Statements` (0 duplicates); Models reduced from `169 Models` down to `15 Models` (0 Setting models).
 * **`/e-newspaper/{id}/pdf`**: Reduced queries from `14 Statements` (1 duplicate) down to `5 Statements` (0 duplicates); Models reduced from `9 Models` down to `3 Models` (0 Setting models).
 
+---
 
+## 22. Videos & Audios Pages Query and Cache Optimizations
 
+### Root Cause
+1. Both `VideoController` and `AudioController` triggered a database query `select name, value, updated_at from settings` in `AppServiceProvider` because they did not initialize or register the settings cache in request attributes.
+2. In `VideoController`, an expensive pluck query on `Post` was executed to fetch `$topicIds` that were never referenced or passed to the view, causing a wasted full table scan.
+3. In `AudioController`, a heavy `Post` pluck table scan query was run to construct the topics filter list, which was then resolved with a duplicate `Topic::whereIn` lookup query.
+4. Redundant relationships (`topic`) and columns (such as large HTML description texts) were retrieved by using generic `with(...)` and `SELECT *` queries.
 
+### The Solution & Rationale
+1. Registered settings cache and news language lists in request attributes to eliminate duplicate queries and setting model hydrations.
+2. Deleted the unused `$topicIds` query in `VideoController`.
+3. Replaced the pluck-based filter query in `AudioController` with an optimized relationship subquery (`Topic::whereHas('posts', ...)`).
+4. Standardized selective column projections on `Post`, `Channel`, and `Topic` relationships.
+
+### Files Modified
+* [VideoController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/VideoController.php)
+* [AudioController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/AudioController.php)
+
+### Code Comparison
+```diff
+--- [ORIGINAL CODE - VideoController.php]
++++ [OPTIMIZED CODE - VideoController.php]
+@@ -39,9 +39,4 @@
+-        $topicIds = Post::where('type', 'video')
+-            ->whereNotNull('topic_id')
+-            ->pluck('topic_id')
+-            ->unique()
+-            ->filter()
+-            ->toArray();
+-            
+-        $query = Post::with(['topic', 'channel'])
++        $query = Post::select('id', 'title', 'slug', 'video_thumb', 'comment', 'view_count', 'publish_date', 'pubdate', 'channel_id')
++            ->with(['channel' => fn($q) => $q->select('id', 'name', 'slug', 'logo')])
+             ->where('posts.status', 'active');
+```
+
+```diff
+--- [ORIGINAL CODE - AudioController.php]
++++ [OPTIMIZED CODE - AudioController.php]
+@@ -40,9 +40,8 @@
+-        $topicIds = Post::where('type', 'audio')
+-            ->whereNotNull('topic_id')
+-            ->pluck('topic_id')
+-            ->unique()
+-            ->filter()
+-            ->toArray();
++        $topics_for_filter = Topic::select('id', 'name', 'slug')
++            ->whereHas('posts', function ($q) use ($subscribedLanguageIds) {
++                $q->where('status', 'active')
++                  ->where('type', 'audio')
++                  ->whereIn('news_language_id', $subscribedLanguageIds);
++            })->get();
+```
+
+### Impact & Scalability
+* **`/videos`**: Reduced queries from `7 Statements` down to `5 Statements` (0 duplicates); Models reduced from `13 Models` down to `10 Models` (0 Setting models).
+* **`/audios`**: Reduced queries from `8 Statements` down to `7 Statements` (0 duplicates); Models reduced from `4 Models` down to `3 Models` (0 Setting models).

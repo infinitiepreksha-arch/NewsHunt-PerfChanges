@@ -210,11 +210,17 @@ This document is the master log of all feature updates, performance optimization
 * **Files Changed:**
   * [app/Http/Controllers/ENewspaperFrontController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/ENewspaperFrontController.php)
 
+### 21. [2026-07-22] Videos & Audios Performance & Query Optimization
+* **Task Description:** Optimized database query execution, Eloquent model hydrations, and duplicate queries for Videos Page (`/videos`) and Audios Page (`/audios`). Integrated settings and language cache in request attributes to eliminate duplicate queries in `AppServiceProvider`, deleted unused pluck query on posts in `VideoController`, replaced pluck table scan in `AudioController` with targeted relationship subquery, and added selective column projections.
+* **Files Changed:**
+  * [app/Http/Controllers/VideoController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/VideoController.php)
+  * [app/Http/Controllers/AudioController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/AudioController.php)
+
 ---
 
 ## 📌 Master Go-To Index of All Changed Codebase Files
 
-**Total Unique Codebase Files Modified/Created Till Now:** 46 Files
+**Total Unique Codebase Files Modified/Created Till Now:** 48 Files
 
 
 | # | File Path | Primary Task / Feature | Date Modified |
@@ -235,6 +241,9 @@ This document is the master log of all feature updates, performance optimization
 | 14 | [app/Http/Controllers/ChannelFrontController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/ChannelFrontController.php) | Channel Grid & Profile Query Optimization | 2026-07-21 |
 | 15 | [app/Http/Controllers/WebStory.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/WebStory.php) | Web Stories Query & Model Hydration Optimization | 2026-07-21 |
 | 16 | [app/Http/Controllers/ENewspaperFrontController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/ENewspaperFrontController.php) | E-Newspaper Query & Setting Optimization | 2026-07-22 |
+| 17 | [app/Http/Controllers/VideoController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/VideoController.php) | Video Query & Settings Optimization | 2026-07-22 |
+| 18 | [app/Http/Controllers/AudioController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/AudioController.php) | Audio Query & Settings Optimization | 2026-07-22 |
+
 
 | 16 | [app/Http/Controllers/AdminControllers/PostController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/AdminControllers/PostController.php) | WebP Image Upload Compression | 2026-07-10 |
 | 15 | [app/Http/Controllers/AdminControllers/AudioPostAdminController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/AdminControllers/AudioPostAdminController.php) | WebP Uploads & Constants Cleanups | 2026-07-10 |

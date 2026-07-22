@@ -7,8 +7,8 @@ This document lists all customer-facing web pages and routes in the NewsHunt app
 ## 📊 Summary of Optimization Progress
 
 * **Total Customer-Facing Pages/Routes:** 26
-* **Optimized Pages/Routes:** 14
-* **Pending Pages/Routes:** 12
+* **Optimized Pages/Routes:** 16
+* **Pending Pages/Routes:** 10
 * **Average Database Query Reduction:** **50% - 70%**
 * **Average Memory / Model Hydration Reduction:** **80% - 95%**
 
@@ -32,8 +32,8 @@ This document lists all customer-facing web pages and routes in the NewsHunt app
 | **E-Newspaper Page** (`/e-newspaper`) | `ENewspaperFrontController@getENewspaper` | **Optimized** | 21 | **10** | 169 | **15** | Replaced 148 Setting model hydrations, replaced full table scans with subqueries, resilient relationship wildcard maps. |
 | **E-Magazine Page** (`/e-magazine`) | `ENewspaperFrontController@getMagazine` | **Optimized** | 21 | **10** | 169 | **7** | Replaced 148 Setting model hydrations, subquery filters. |
 | **E-Newspaper/Magazine PDF** (`/e-newspaper/{id}/pdf`) | `ENewspaperFrontController@showPdf` | **Optimized** | 14 | **5** | 9 | **3** | Replaced 2 Setting model hydrations, request cache, relation eager load. |
-| **Videos Page** (`/videos`) | `VideoController@allVideos` | **Pending** | ~20 | *TBD* | ~170 | *TBD* | *Pending optimization of language settings, N+1 lookups, and column selections.* |
-| **Audios Page** (`/audios`) | `AudioController@allAudios` | **Pending** | ~20 | *TBD* | ~170 | *TBD* | *Pending optimization of language settings, filters list, and column selections.* |
+| **Videos Page** (`/videos`) | `VideoController@allVideos` | **Optimized** | 7 | **5** | 13 | **10** | Removed unused pluck query, removed redundant topic eager-loading, settings & language cache. |
+| **Audios Page** (`/audios`) | `AudioController@allAudios` | **Optimized** | 8 | **7** | 4 | **3** | Replaced pluck table scans with whereHas relationship exists check, settings & language cache. |
 | **Membership Page** (`/membership`) | `MembershipController@index` | **Pending** | ~10 | *TBD* | ~10 | *TBD* | *Pending settings attributes cache integration for trial status check.* |
 | **User Account Dashboard** (`/my-account`) | `FrontUserController@index` | **Pending** | ~15 | *TBD* | ~15 | *TBD* | *Pending query tuning, subscriber relation eager loading.* |
 | **My Bookmarks** (`/my-account/bookmarks`) | `FrontUserController@favoritePosts` | **Pending** | ~15 | *TBD* | ~15 | *TBD* | *Pending query tuning and setting caching.* |

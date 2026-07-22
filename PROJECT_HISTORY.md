@@ -822,6 +822,23 @@ Deferred AJAX loading for Navbar Category Dropdowns and homepage sliders (Most R
   * `/e-newspaper`: Queries reduced from `21 Statements` (6 duplicates) down to `10 Statements` (0 duplicates); Models reduced from `169 Models` down to `15 Models` (0 Setting models).
   * `/e-newspaper/{id}/pdf`: Queries reduced from `14 Statements` (1 duplicate) down to `5 Statements` (0 duplicates); Models reduced from `9 Models` down to `3 Models` (0 Setting models).
 
+### [2026-07-22] Videos & Audios Performance & Query Optimization
+
+* **Feature**: Optimized database query execution, Eloquent model hydrations, and duplicate queries for Videos Page (`/videos`) and Audios Page (`/audios`).
+* **Files Modified**:
+  * [VideoController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/VideoController.php)
+  * [AudioController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/AudioController.php)
+* **Logic Changes**:
+  * Integrated request attributes settings cache, eliminating the `select name, value, updated_at from settings` query inside `AppServiceProvider`.
+  * Cached subscriber news language IDs in request attributes, preventing duplicate language lookup queries.
+  * Deleted completely unused `$topicIds` pluck query in `VideoController`.
+  * Replaced plucking table scan on `Post` in `AudioController` with a clean `whereHas('posts', ...)` query on `Topic`.
+  * Added selective column projections for posts, topics, and channels.
+* **Verification Results**:
+  * `/videos`: Queries reduced from `7 Statements` down to `5 Statements` (0 duplicates); Models reduced from `13 Models` down to `10 Models` (0 Setting models).
+  * `/audios`: Queries reduced from `8 Statements` down to `7 Statements` (0 duplicates); Models reduced from `4 Models` down to `3 Models` (0 Setting models).
+
+
 
 
 

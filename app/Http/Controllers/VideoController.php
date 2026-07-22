@@ -10,13 +10,27 @@ use Illuminate\Http\Request;
 class VideoController extends Controller
 {
     const TIME_FORMATE = 'Y-m-d H:i';
-    public function allVideos(Request $request)
+    private function getSettingsCache(?Request $request = null)
     {
-        $theme  = getTheme();
-        $title  = __('frontend-labels.news_videos.title');
-        $userId = auth()->check() ? auth()->id() : null;
+        $request = $request ?? request();
+        if ($request->attributes->has('settings_cache')) {
+            return $request->attributes->get('settings_cache');
+        }
 
-        // Determine subscribed language IDs
+        $settingsList = \Illuminate\Support\Facades\DB::table('settings')->select('name', 'value', 'type')->get();
+        $settingsCache = $settingsList->keyBy('name');
+        $request->attributes->set('settings_cache', $settingsCache);
+
+        return $settingsCache;
+    }
+
+    private function getSubscribedLanguageIds($userId, ?Request $request = null)
+    {
+        $request = $request ?? request();
+        if ($request->attributes->has('subscribed_language_ids')) {
+            return $request->attributes->get('subscribed_language_ids');
+        }
+
         if ($userId) {
             $subscribedLanguageIds = NewsLanguageSubscriber::where('user_id', $userId)->pluck('news_language_id');
 
@@ -36,19 +50,24 @@ class VideoController extends Controller
             $subscribedLanguageIds = $sessionLanguageId ? collect([$sessionLanguageId]) : collect();
         }
 
-        $topicIds = Post::where('type', 'video')
-            ->whereNotNull('topic_id')
-            ->when($subscribedLanguageIds->isNotEmpty(), function ($query) use ($subscribedLanguageIds) {
-                $query->whereIn('news_language_id', $subscribedLanguageIds);
-            })
-            ->pluck('topic_id')
-            ->unique()
-            ->filter()
-            ->toArray();
-            
+        $request->attributes->set('subscribed_language_ids', $subscribedLanguageIds);
+        return $subscribedLanguageIds;
+    }
+
+    public function allVideos(Request $request)
+    {
+        $settingsCache = $this->getSettingsCache($request);
+        $theme  = getTheme();
+        $title  = __('frontend-labels.news_videos.title');
+        $userId = auth()->check() ? auth()->id() : null;
+
+        // Determine subscribed language IDs
+        $subscribedLanguageIds = $this->getSubscribedLanguageIds($userId, $request);
+
         $typeFilter = $request->query('type', 'all');
         // Build video query with filters
-        $query = Post::with(['topic', 'channel'])
+        $query = Post::select('id', 'title', 'slug', 'video_thumb', 'comment', 'view_count', 'publish_date', 'pubdate', 'channel_id')
+            ->with(['channel' => fn($q) => $q->select('id', 'name', 'slug', 'logo')])
             ->where('posts.status', 'active');
 
         if ($typeFilter !== 'all') {

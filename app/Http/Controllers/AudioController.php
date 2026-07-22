@@ -11,13 +11,27 @@ use Illuminate\Http\Request;
 class AudioController extends Controller
 {
     const TIME_FORMATE = 'Y-m-d H:i';
-    public function allAudios(Request $request)
+    private function getSettingsCache(?Request $request = null)
     {
-        $theme  = getTheme();
-        $title  = __('frontend-labels.newsaudios.title');
-        $userId = auth()->check() ? auth()->id() : null;
+        $request = $request ?? request();
+        if ($request->attributes->has('settings_cache')) {
+            return $request->attributes->get('settings_cache');
+        }
 
-        // Determine subscribed language IDs
+        $settingsList = \Illuminate\Support\Facades\DB::table('settings')->select('name', 'value', 'type')->get();
+        $settingsCache = $settingsList->keyBy('name');
+        $request->attributes->set('settings_cache', $settingsCache);
+
+        return $settingsCache;
+    }
+
+    private function getSubscribedLanguageIds($userId, ?Request $request = null)
+    {
+        $request = $request ?? request();
+        if ($request->attributes->has('subscribed_language_ids')) {
+            return $request->attributes->get('subscribed_language_ids');
+        }
+
         if ($userId) {
             $subscribedLanguageIds = NewsLanguageSubscriber::where('user_id', $userId)->pluck('news_language_id');
 
@@ -37,19 +51,36 @@ class AudioController extends Controller
             $subscribedLanguageIds = $sessionLanguageId ? collect([$sessionLanguageId]) : collect();
         }
 
-        $topicIds = Post::where('type', 'audio')
-            ->whereNotNull('topic_id')
-            ->when($subscribedLanguageIds->isNotEmpty(), function ($query) use ($subscribedLanguageIds) {
-                $query->whereIn('news_language_id', $subscribedLanguageIds);
-            })
-            ->pluck('topic_id')
-            ->unique()
-            ->filter()
-            ->toArray();
+        $request->attributes->set('subscribed_language_ids', $subscribedLanguageIds);
+        return $subscribedLanguageIds;
+    }
+
+    public function allAudios(Request $request)
+    {
+        $settingsCache = $this->getSettingsCache($request);
+        $theme  = getTheme();
+        $title  = __('frontend-labels.newsaudios.title');
+        $userId = auth()->check() ? auth()->id() : null;
+
+        // Determine subscribed language IDs
+        $subscribedLanguageIds = $this->getSubscribedLanguageIds($userId, $request);
+
+        $topics_for_filter = Topic::select('id', 'name', 'slug')
+            ->whereHas('posts', function ($q) use ($subscribedLanguageIds) {
+                $q->where('status', 'active')
+                  ->where('type', 'audio')
+                  ->when($subscribedLanguageIds->isNotEmpty(), function ($query) use ($subscribedLanguageIds) {
+                      $query->whereIn('news_language_id', $subscribedLanguageIds);
+                  });
+            })->get();
 
         $typeFilter = $request->query('type', 'all');
         // Build video query with filters
-        $query = Post::with(['topic', 'channel'])
+        $query = Post::select('id', 'title', 'slug', 'image', 'comment', 'view_count', 'publish_date', 'pubdate', 'channel_id', 'topic_id')
+            ->with([
+                'topic' => fn($q) => $q->select('id', 'name', 'slug'),
+                'channel' => fn($q) => $q->select('id', 'name', 'slug', 'logo')
+            ])
             ->where('posts.status', 'active');
 
         if ($typeFilter !== 'all') {
@@ -88,7 +119,6 @@ class AudioController extends Controller
             return $post;
         });
 
-        $topics_for_filter = Topic::whereIn('id', $topicIds)->get();
         $data              = [
             'audios'            => $audios,
             'theme'             => $theme,
