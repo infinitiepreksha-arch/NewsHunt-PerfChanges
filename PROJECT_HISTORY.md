@@ -808,10 +808,20 @@ Deferred AJAX loading for Navbar Category Dropdowns and homepage sliders (Most R
   * Computed `$filteredTopics` on `/webstories` directly in memory from the eagerly-loaded `$stories` collection (`$stories->pluck('topic')->filter()->unique('id')->values()`), eliminating 1 SQL query.
   * Removed unused `Topic::all()` query from `storyByTopic()`, eliminating 1 SQL query and **39 unused `Topic` model hydrations**.
   * Added selective column projections (`Story::select(...)`, `Topic::select(...)`) across all methods.
+### [2026-07-22] E-Newspaper & PDF Viewer Performance & Query Optimization
+
+* **Feature**: Optimized database query execution, Eloquent model hydrations, and duplicate queries for E-Newspaper Page (`/e-newspaper`), E-Magazine Page (`/e-magazine`), and PDF Viewer Page (`/e-newspaper/{id}/pdf`).
+* **Files Modified**:
+  * [ENewspaperFrontController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/ENewspaperFrontController.php)
+* **Logic Changes**:
+  * Replaced `Setting::pluck('value', 'name')` and individual `Setting::where(...)` queries with `$request->attributes` cached settings (`$settingsCache`), completely eliminating **148 Setting Eloquent model hydrations** per page load.
+  * Shared `$subscribedLanguageIds` via `$request->attributes->set('subscribed_language_ids', ...)`, eliminating duplicate `news_languages_subscribers` queries in `AppServiceProvider`.
+  * Replaced full table scan query `$allEpapers = ENewspaper::with(['channel', 'topic'])->get();` (which fetched all newspaper records to build filter dropdowns) with lightweight `exists` subqueries on `Channel` and `Topic` models.
+  * Ensured wildcard relationship fields are queried to maintain robust schema compatibility (avoiding missing/unmigrated column errors like `language_code`).
 * **Verification Results**:
-  * `/webstories`: Queries reduced from `15 Statements` (2 duplicates) down to `12 Statements` (0 duplicates); Models reduced from `63 Models` down to `25 Models` (3 Topic models).
-  * `/webstories/{topic}/{story}`: Queries reduced from `20 Statements` (2 duplicates) down to `17 Statements` (0 duplicates, incl. 2 updates); Models reduced from `155 Models` down to `12 Models` (0 Setting models).
-  * `/webstories/{topic}`: Queries reduced from `15 Statements` down to `14 Statements` (0 duplicates); Models reduced from `51 Models` down to `14 Models` (2 Topic models).
+  * `/e-newspaper`: Queries reduced from `21 Statements` (6 duplicates) down to `10 Statements` (0 duplicates); Models reduced from `169 Models` down to `15 Models` (0 Setting models).
+  * `/e-newspaper/{id}/pdf`: Queries reduced from `14 Statements` (1 duplicate) down to `5 Statements` (0 duplicates); Models reduced from `9 Models` down to `3 Models` (0 Setting models).
+
 
 
 

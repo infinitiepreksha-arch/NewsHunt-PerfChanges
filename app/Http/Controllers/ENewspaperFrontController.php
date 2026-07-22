@@ -11,13 +11,24 @@ use Illuminate\Support\Facades\Auth;
 
 class ENewspaperFrontController extends Controller
 {
-    public function getENewspaper(Request $request)
+    private function getSettingsCache(?Request $request = null)
     {
-        $theme  = getTheme();
-        $title  = __('frontend-labels.enewspapers.title');
-        $userId = auth()->user()->id ?? "0";
+        $request = $request ?? request();
+        if ($request->attributes->has('settings_cache')) {
+            return $request->attributes->get('settings_cache');
+        }
+        $settingsList = \Illuminate\Support\Facades\DB::table('settings')->select('name', 'value', 'type')->get();
+        $settingsCache = $settingsList->keyBy('name');
+        $request->attributes->set('settings_cache', $settingsCache);
+        return $settingsCache;
+    }
 
-        // Get subscribed language IDs
+    private function getSubscribedLanguageIds($userId, ?Request $request = null)
+    {
+        $request = $request ?? request();
+        if ($request->attributes->has('subscribed_language_ids')) {
+            return $request->attributes->get('subscribed_language_ids');
+        }
         if ($userId) {
             $subscribedLanguageIds = NewsLanguageSubscriber::where('user_id', $userId)->pluck('news_language_id');
         } else {
@@ -25,10 +36,22 @@ class ENewspaperFrontController extends Controller
             if ($sessionLanguageId) {
                 $subscribedLanguageIds = collect([$sessionLanguageId]);
             } else {
-                $defaultActiveLanguage = NewsLanguage::where('is_active', 1)->first();
+                $defaultActiveLanguage = \App\Providers\AppServiceProvider::$activeLanguageCache ?? NewsLanguage::where('is_active', 1)->first();
                 $subscribedLanguageIds = $defaultActiveLanguage ? collect([$defaultActiveLanguage->id]) : collect();
             }
         }
+        $request->attributes->set('subscribed_language_ids', $subscribedLanguageIds);
+        return $subscribedLanguageIds;
+    }
+
+    public function getENewspaper(Request $request)
+    {
+        $theme  = getTheme();
+        $title  = __('frontend-labels.enewspapers.title');
+        $userId = auth()->user()->id ?? "0";
+
+        $settingsCache = $this->getSettingsCache($request);
+        $subscribedLanguageIds = $this->getSubscribedLanguageIds($userId, $request);
 
         // Check limits
         $dailyLimitReached        = false;
@@ -37,7 +60,7 @@ class ENewspaperFrontController extends Controller
         $user         = auth()->user();
         $subscription = $user ? $user->subscription : null;
 
-        $freeTrialLimit = (int) (Setting::where('name', 'free_trial_e_papers_and_magazines_limit')->value('value') ?? 5);
+        $freeTrialLimit = (int) ($settingsCache->get('free_trial_e_papers_and_magazines_limit')->value ?? 5);
         $isDailyLimitEligible = false;
 
         if ($subscription) {
@@ -73,14 +96,16 @@ class ENewspaperFrontController extends Controller
 
         $e_newspapers = $query->orderBy('date', 'desc')->paginate(12);
 
-        // Get unique channels and topics from all e-newspapers (not just current page)
-        $allEpapers = ENewspaper::with(['channel', 'topic'])
-            ->whereIn('news_language_id', $subscribedLanguageIds)
-            ->where('type', 'paper')
-            ->get();
+        // Get unique channels and topics targeted by subquery
+        $epaperChannels = \App\Models\Channel::select('id', 'name', 'slug', 'logo')
+            ->whereHas('eNewspapers', function ($q) use ($subscribedLanguageIds) {
+                $q->whereIn('news_language_id', $subscribedLanguageIds)->where('type', 'paper');
+            })->orderBy('name', 'asc')->get();
 
-        $epaperChannels = $allEpapers->pluck('channel')->filter()->unique('id')->sortBy('name')->values();
-        $epapertopics   = $allEpapers->pluck('topic')->filter()->unique('id')->sortBy('name')->values();
+        $epapertopics = \App\Models\Topic::select('id', 'name', 'slug')
+            ->whereHas('eNewspapers', function ($q) use ($subscribedLanguageIds) {
+                $q->whereIn('news_language_id', $subscribedLanguageIds)->where('type', 'paper');
+            })->orderBy('name', 'asc')->get();
 
         // Handle AJAX requests
         if ($request->ajax() || $request->wantsJson()) {
@@ -113,8 +138,11 @@ class ENewspaperFrontController extends Controller
         }
 
         // Regular page load
-        $socialsettings = Setting::pluck('value', 'name');
-        $epapersetting  = $this->getENewsletterSettings();
+        $socialsettings = $settingsCache->map(fn($item) => $item->value);
+        $epapersetting  = [
+            'enewspaper'      => $settingsCache->get('enews_paper_image')->value ?? asset('public/front_end/classic/images/default/newspaper-advertising-service-500x500-1.png'),
+            'enewspapertitle' => $settingsCache->get('enews_paper_title')->value ?? 'Newshunt',
+        ];
 
         $data = [
             'title'                    => $title,
@@ -133,16 +161,13 @@ class ENewspaperFrontController extends Controller
         return view('front_end.' . $theme . '.pages.e-news-paper', $data);
     }
 
-    private function getENewsletterSettings()
+    private function getENewsletterSettings(?Request $request = null)
     {
-        $settings = Setting::whereIn('name', [
-            'enews_paper_image',
-            'enews_paper_title',
-        ])->pluck('value', 'name');
+        $settingsCache = $this->getSettingsCache($request);
 
         return [
-            'enewspaper'      => $settings['enews_paper_image'] ?? asset('public/front_end/classic/images/default/newspaper-advertising-service-500x500-1.png'),
-            'enewspapertitle' => $settings['enews_paper_title'] ?? 'Newshunt',
+            'enewspaper'      => $settingsCache->get('enews_paper_image')->value ?? asset('public/front_end/classic/images/default/newspaper-advertising-service-500x500-1.png'),
+            'enewspapertitle' => $settingsCache->get('enews_paper_title')->value ?? 'Newshunt',
         ];
     }
 
@@ -152,18 +177,8 @@ class ENewspaperFrontController extends Controller
         $title  = __('frontend-labels.magazines.title');
         $userId = auth()->user()->id ?? "0";
 
-        // Get subscribed language IDs
-        if ($userId) {
-            $subscribedLanguageIds = NewsLanguageSubscriber::where('user_id', $userId)->pluck('news_language_id');
-        } else {
-            $sessionLanguageId = session('selected_news_language');
-            if ($sessionLanguageId) {
-                $subscribedLanguageIds = collect([$sessionLanguageId]);
-            } else {
-                $defaultActiveLanguage = NewsLanguage::where('is_active', 1)->first();
-                $subscribedLanguageIds = $defaultActiveLanguage ? collect([$defaultActiveLanguage->id]) : collect();
-            }
-        }
+        $settingsCache = $this->getSettingsCache($request);
+        $subscribedLanguageIds = $this->getSubscribedLanguageIds($userId, $request);
 
         // Check limits
         $dailyLimitReached        = false;
@@ -172,7 +187,7 @@ class ENewspaperFrontController extends Controller
         $user         = auth()->user();
         $subscription = $user ? $user->subscription : null;
 
-        $freeTrialLimit = (int) (Setting::where('name', 'free_trial_e_papers_and_magazines_limit')->value('value') ?? 5);
+        $freeTrialLimit = (int) ($settingsCache->get('free_trial_e_papers_and_magazines_limit')->value ?? 5);
         $isDailyLimitEligible = false;
 
         if ($subscription) {
@@ -208,23 +223,15 @@ class ENewspaperFrontController extends Controller
 
         $e_newspapers = $query->orderBy('date', 'desc')->paginate(12);
 
-        // Get unique channels and topics from all e-newspapers (not just current page)
-        $allEpapers = ENewspaper::with(['channel', 'topic'])
-            ->whereIn('news_language_id', $subscribedLanguageIds)
-            ->where('type', 'magazine')
-            ->get();
+        $epaperChannels = \App\Models\Channel::select('id', 'name', 'slug', 'logo')
+            ->whereHas('eNewspapers', function ($q) use ($subscribedLanguageIds) {
+                $q->whereIn('news_language_id', $subscribedLanguageIds)->where('type', 'magazine');
+            })->orderBy('name', 'asc')->get();
 
-        $epaperChannels = $allEpapers
-            ->pluck('channel')
-            ->filter()
-            ->unique('id')
-            ->values();
-
-        $epapertopics = $allEpapers
-            ->pluck('topic')
-            ->filter()
-            ->unique('id')
-            ->values();
+        $epapertopics = \App\Models\Topic::select('id', 'name', 'slug')
+            ->whereHas('eNewspapers', function ($q) use ($subscribedLanguageIds) {
+                $q->whereIn('news_language_id', $subscribedLanguageIds)->where('type', 'magazine');
+            })->orderBy('name', 'asc')->get();
 
         // Handle AJAX requests
         if ($request->ajax() || $request->wantsJson()) {
@@ -257,8 +264,11 @@ class ENewspaperFrontController extends Controller
         }
 
         // Regular page load
-        $socialsettings = Setting::pluck('value', 'name');
-        $epapersetting  = $this->getENewsletterSettings();
+        $socialsettings = $settingsCache->map(fn($item) => $item->value);
+        $epapersetting  = [
+            'enewspaper'      => $settingsCache->get('enews_paper_image')->value ?? asset('public/front_end/classic/images/default/newspaper-advertising-service-500x500-1.png'),
+            'enewspapertitle' => $settingsCache->get('enews_paper_title')->value ?? 'Newshunt',
+        ];
 
         $data = [
             'title'                    => $title,
@@ -283,9 +293,10 @@ class ENewspaperFrontController extends Controller
         $user         = auth()->user();
         $subscription = $user ? $user->subscription : null;
 
-        $eNewspaper = ENewspaper::findOrFail($id);
+        $settingsCache = $this->getSettingsCache($request);
+                $eNewspaper = ENewspaper::findOrFail($id);
 
-        $freeTrialLimit = (int) (Setting::where('name', 'free_trial_e_papers_and_magazines_limit')->value('value') ?? 5);
+        $freeTrialLimit = (int) ($settingsCache->get('free_trial_e_papers_and_magazines_limit')->value ?? 5);
         $isDailyLimitEligible = false;
         $dailyLimitReached = false;
         $subscriptionLimitReached = false;
@@ -301,23 +312,22 @@ class ENewspaperFrontController extends Controller
             $isDailyLimitEligible = true;
         }
 
-        if ($dailyLimitReached) { // This will now be largely false unless we set it for redirect logic
-             // For accessPdf, we might still want a server check if feasible, but user asked for JS.
-             // However, for direct PDF access, we might need a small logic hack.
-        }
-
         return redirect(asset('storage/' . $eNewspaper->pdf_path));
     }
 
     public function showPdf($id)
     {
+        $request = request();
+        $settingsCache = $this->getSettingsCache($request);
         $userId       = auth()->check() ? auth()->id() : null;
         $user         = auth()->user();
         $subscription = $user ? $user->subscription : null;
+        $subscribedLanguageIds = $this->getSubscribedLanguageIds($userId, $request);
 
-        $e_newspaper = ENewspaper::with('channel')->findOrFail($id);
+        $e_newspaper = ENewspaper::with('channel')
+            ->findOrFail($id);
 
-        $freeTrialLimit = (int) (Setting::where('name', 'free_trial_e_papers_and_magazines_limit')->value('value') ?? 5);
+        $freeTrialLimit = (int) ($settingsCache->get('free_trial_e_papers_and_magazines_limit')->value ?? 5);
         $isDailyLimitEligible = false;
         $dailyLimitReached = false;
         $subscriptionLimitReached = false;
@@ -340,9 +350,9 @@ class ENewspaperFrontController extends Controller
                 ->with('subscription_limit_reached', $subscriptionLimitReached);
         }
 
-        $appName = Setting::where('name', 'app_name')->value('value') ?? 'News Portal';
+        $appName = $settingsCache->get('app_name')->value ?? 'News Portal';
 
-        $title = $e_newspaper->channel->name;
+        $title = $e_newspaper->channel->name ?? 'E-Paper';
 
         $flipbookAssets = [
             'whiteBookCss'      => asset('front_end/classic/css/epaper-css/white-book-view.css'),

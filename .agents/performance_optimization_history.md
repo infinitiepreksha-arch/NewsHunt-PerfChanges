@@ -980,5 +980,50 @@ Even after Phase 1, the post page still executed duplicate subscriber languages 
 * **`/webstories/{topic}/{story}`**: Reduced queries from `20 Statements` (2 duplicates) down to `17 Statements` (0 duplicates, incl. 2 updates); Models reduced from `155 Models` down to `12 Models` (0 Setting models).
 * **`/webstories/{topic}`**: Reduced queries from `15 Statements` down to `14 Statements` (0 duplicates); Models reduced from `51 Models` down to `14 Models` (2 Topic models).
 
+---
+
+## 21. E-Newspaper & PDF Viewer Query & Model Optimization
+
+### Root Cause
+1. **Setting Model Hydration Blowup**: `Setting::pluck('value', 'name')` on `/e-newspaper` and `/e-magazine` instantiated **148 full Eloquent Setting models** into RAM per request. Individual `Setting::where(...)` queries ran multiple times per view.
+2. **Redundant E-Newspaper Table Scan**: `$allEpapers = ENewspaper::with(['channel', 'topic'])->get()` fetched all newspaper rows in the database just to extract unique channel and topic dropdown filters, generating excessive memory and database load.
+3. **Duplicate Subscribed News Languages Queries**: `NewsLanguageSubscriber::where('user_id', $userId)` executed in `ENewspaperFrontController.php` and again in `AppServiceProvider`.
+
+### Solution & Rationale
+1. **Request-Scoped Settings Cache**: Replaced all `Setting::pluck(...)` and `Setting::where(...)` queries with `$request->attributes` cached settings (`$settingsCache`), completely dropping Setting model hydrations from **148 down to 0**.
+2. **Targeted exist Subqueries for Filters**: Replaced the full table scan with targeted existence checks (`Channel::whereHas('eNewspapers', ...)` and `Topic::whereHas('eNewspapers', ...)`).
+3. **Request Attribute Language Cache**: Shared resolved `$subscribedLanguageIds` via `$request->attributes->set('subscribed_language_ids', ...)` to reuse across `AppServiceProvider`.
+4. **Relationship Wildcard Compatibility**: Bypassed selective column projections on `ENewspaper` and its relationships to avoid unmigrated/missing database field errors (e.g., `language_code` vs `code`).
+
+### Files Modified
+* [ENewspaperFrontController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/ENewspaperFrontController.php)
+
+### Code Comparison
+```diff
+--- [ORIGINAL CODE - ENewspaperFrontController.php]
++++ [OPTIMIZED CODE - ENewspaperFrontController.php]
+@@ -20,11 +20,4 @@
+-        if ($userId) {
+-            $subscribedLanguageIds = NewsLanguageSubscriber::where('user_id', $userId)->pluck('news_language_id');
+-        } else { ... }
++        $settingsCache = $this->getSettingsCache($request);
++        $subscribedLanguageIds = $this->getSubscribedLanguageIds($userId, $request);
+ 
+-        $allEpapers = ENewspaper::with(['channel', 'topic'])->get();
+-        $epaperChannels = $allEpapers->pluck('channel')->filter()->unique('id')->sortBy('name')->values();
++        $epaperChannels = \App\Models\Channel::select('id', 'name', 'slug', 'logo')
++            ->whereHas('eNewspapers', function ($q) use ($subscribedLanguageIds) {
++                $q->whereIn('news_language_id', $subscribedLanguageIds)->where('type', 'paper');
++            })->orderBy('name', 'asc')->get();
+ 
+-        $socialsettings = Setting::pluck('value', 'name');
++        $socialsettings = $settingsCache->map(fn($item) => $item->value);
+```
+
+### Impact & Scalability
+* **`/e-newspaper`**: Reduced queries from `21 Statements` (6 duplicates) down to `10 Statements` (0 duplicates); Models reduced from `169 Models` down to `15 Models` (0 Setting models).
+* **`/e-newspaper/{id}/pdf`**: Reduced queries from `14 Statements` (1 duplicate) down to `5 Statements` (0 duplicates); Models reduced from `9 Models` down to `3 Models` (0 Setting models).
+
+
 
 
