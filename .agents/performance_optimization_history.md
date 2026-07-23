@@ -880,7 +880,448 @@ Even after Phase 1, the post page still executed duplicate subscriber languages 
 -        $post_lable = Setting::get()->where('name', 'news_lable_place_holder')->first();
 ```
 
+---
+
+## 19. Channels Directory & Single Channel Profile Optimization
+
+### Root Cause
+1. **Setting Model Hydration & Duplicate Query**: `ChannelFrontController.php` executed `Setting::where('name', 'default_image')->first()`, triggering a separate SQL query and instantiating 1 `Setting` Eloquent model. `AppServiceProvider` executed the `settings` query again.
+2. **Duplicate News Language Subscriber Lookups**: `NewsLanguageSubscriber::where('user_id', $userId)` executed in `ChannelFrontController` and again in `AppServiceProvider`.
+3. **Redundant Post Count Query**: On `/channels/{slug}`, line 69 executed `select count(*) as aggregate from posts...` to compute `$post_count`. The paginator on line 63 already executed `count(*)` and provided `$getChannelPosts->total()`.
+4. **Guest Visitor Subquery Overhead**: On `/channels`, `withCount(['subscribers as is_followed' => ...])` executed a subquery (`where user_id = ''`) for unauthenticated guest visitors.
+5. **Separate Subscriber Query**: On `/channels/{slug}`, `ChannelSubscriber::where('channel_id', ...)` executed a standalone SQL query.
+
+### Solution & Rationale
+1. **Request-Scoped Settings Cache**: Replaced `Setting::where(...)` with `$request->attributes` cached settings collection (`$settingsCache->get('default_image')->value ?? null`), returning stdClass objects with zero Setting model hydrations.
+2. **Request-Scoped Language Cache**: Stored resolved `$subscribedLanguageIds` in `$request->attributes->set('subscribed_language_ids', ...)` for reuse by `AppServiceProvider`.
+3. **Paginator Total Usage**: Replaced `Post::where(...)->count()` with `$post_count = $getChannelPosts->total()`.
+4. **Guest Bypass & Subquery Integration**: Wrapped `withCount(['subscribers as is_followed' => ...])` on `/channels` in a `$user` check and integrated `subscribers as is_followed` `withCount` directly into the `$channelData` query on `/channels/{slug}`.
+5. **Selective Column Selection**: Added `Channel::select('id', 'name', 'slug', 'logo', 'description', 'follow_count', 'status')` and added `'channels.slug as channel_slug'` to `Post::select(...)`.
+
+### Files Modified
+* [ChannelFrontController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/ChannelFrontController.php)
+
+### Code Comparison
+```diff
+--- [ORIGINAL CODE - ChannelFrontController.php]
++++ [OPTIMIZED CODE - ChannelFrontController.php]
+@@ -21,14 +21,27 @@
+-        $defaultImage = Setting::where('name', 'default_image')->first()->value ?? null;
+-        if ($userId) {
+-            $subscribedLanguageIds = NewsLanguageSubscriber::where('user_id', $userId)->pluck('news_language_id');
+-        } else { ... }
++        if ($request->attributes->has('settings_cache')) {
++            $settingsCache = $request->attributes->get('settings_cache');
++        } else {
++            $settingsList = \Illuminate\Support\Facades\DB::table('settings')->select('name', 'value', 'type')->get();
++            $settingsCache = $settingsList->keyBy('name');
++            $request->attributes->set('settings_cache', $settingsCache);
++        }
++        $defaultImage = $settingsCache->get('default_image')->value ?? null;
++        if ($request->attributes->has('subscribed_language_ids')) {
++            $subscribedLanguageIds = $request->attributes->get('subscribed_language_ids');
++        } else { ... $request->attributes->set('subscribed_language_ids', $subscribedLanguageIds); }
+
+-        $post_count = Post::where('posts.channel_id', $channelData->id)...->count();
++        $post_count = $getChannelPosts->total();
+
+-        $subscriber = Auth::check() ? ChannelSubscriber::where('channel_id', $channelData->id)...->first() : 'unauthorized';
++        $subscriber = Auth::check() ? ($channelData->is_followed ? 1 : null) : 'unauthorized';
+```
+
+---
+
+## 20. Web Stories Directory & Story Reader Optimization
+
+### Root Cause
+1. **Setting Model Hydration Blowup**: `Setting::pluck('value', 'name')` on `/webstories/{topic}/{story}` instantiated **146 full Eloquent Setting models** into memory on every single request. `Setting::where('name', 'free_trial_story_limit')` executed extra DB queries across all methods.
+2. **Unconstrained Topic Model Hydration**: `Topic::all()` on `/webstories` and `/webstories/{topic}` instantiated 40 Eloquent `Topic` models in memory only to filter or ignore them.
+3. **Duplicate News Language Subscriber Lookups**: `NewsLanguageSubscriber::where('user_id', $userId)` executed in `WebStory.php` and again in `AppServiceProvider`.
+4. **Duplicate Topic Filter Query**: `/webstories` executed a separate `SELECT id, name, slug FROM topics WHERE EXISTS...` query for `$filteredTopics` when topics were already eager-loaded in `$stories`.
+
+### Solution & Rationale
+1. **Request-Scoped Settings Cache**: Replaced `Setting::pluck(...)` and `Setting::where(...)` with `$request->attributes` cached settings collection (`$settingsCache`), completely eliminating **146 Setting model hydrations** per story reader hit.
+2. **Request Attribute Language Cache**: Shared resolved `$subscribedLanguageIds` via `$request->attributes->set('subscribed_language_ids', ...)` to reuse across `AppServiceProvider`.
+3. **In-Memory Collection Pluck**: Computed `$filteredTopics` on `/webstories` directly in memory via `$stories->pluck('topic')->filter()->unique('id')->values()`, saving 1 SQL statement.
+4. **Removed Unused Topic Query**: Removed `$topics = Topic::all()` from `storyByTopic()`, saving 1 SQL statement and 39 unused `Topic` model hydrations.
+5. **Selective Column Projections**: Constrained `Story::select(...)` and `Topic::select(...)` fields across all endpoints.
+
+### Files Modified
+* [WebStory.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/WebStory.php)
+
+### Code Comparison
+```diff
+--- [ORIGINAL CODE - WebStory.php]
++++ [OPTIMIZED CODE - WebStory.php]
+@@ -19,16 +19,25 @@
+-        $topics          = Topic::all();
+         $theme           = getTheme();
+         $selectedTopicId = $request->query('topic');
+         $userId          = Auth::user()->id ?? 0;
+
++        $settingsCache = $this->getSettingsCache($request);
++        $subscribedLanguageIds = $this->getSubscribedLanguageIds($userId, $request);
+
+-        $stories = Story::with(['story_slides', 'topic'])
++        $stories = Story::select('id', 'title', 'slug', 'topic_id', 'news_language_id', 'story_count', 'image_size_type', 'created_at')
++            ->with(['story_slides', 'topic' => fn($q) => $q->select('id', 'name', 'slug')])
+             ->whereHas('story_slides')
+             ->get();
+
+-        $filteredTopics = $topics->filter(function ($topic) use ($stories) { ... });
++        $filteredTopics = $stories->pluck('topic')->filter()->unique('id')->values();
+
+-        $socialsettings = Setting::pluck('value', 'name');
++        $socialsettings = $settingsCache->map(fn($item) => $item->value);
+```
+
 ### Impact & Scalability
-* **`/topics`**: Reduced queries from `10 Statements` to `9 Statements` (0 duplicates).
-* **`/topics/world`**: Reduced queries from `12 Statements` to `9 Statements` (25% query reduction, 0 duplicates); Eloquent model hydrations dropped from `163 Models` down to `17 Models` (~90% RAM reduction).
+* **`/webstories`**: Reduced queries from `15 Statements` (2 duplicates) down to `12 Statements` (0 duplicates); Models reduced from `63 Models` down to `25 Models` (3 Topic models).
+* **`/webstories/{topic}/{story}`**: Reduced queries from `20 Statements` (2 duplicates) down to `17 Statements` (0 duplicates, incl. 2 updates); Models reduced from `155 Models` down to `12 Models` (0 Setting models).
+* **`/webstories/{topic}`**: Reduced queries from `15 Statements` down to `14 Statements` (0 duplicates); Models reduced from `51 Models` down to `14 Models` (2 Topic models).
+
+---
+
+## 21. E-Newspaper & PDF Viewer Query & Model Optimization
+
+### Root Cause
+1. **Setting Model Hydration Blowup**: `Setting::pluck('value', 'name')` on `/e-newspaper` and `/e-magazine` instantiated **148 full Eloquent Setting models** into RAM per request. Individual `Setting::where(...)` queries ran multiple times per view.
+2. **Redundant E-Newspaper Table Scan**: `$allEpapers = ENewspaper::with(['channel', 'topic'])->get()` fetched all newspaper rows in the database just to extract unique channel and topic dropdown filters, generating excessive memory and database load.
+3. **Duplicate Subscribed News Languages Queries**: `NewsLanguageSubscriber::where('user_id', $userId)` executed in `ENewspaperFrontController.php` and again in `AppServiceProvider`.
+
+### Solution & Rationale
+1. **Request-Scoped Settings Cache**: Replaced all `Setting::pluck(...)` and `Setting::where(...)` queries with `$request->attributes` cached settings (`$settingsCache`), completely dropping Setting model hydrations from **148 down to 0**.
+2. **Targeted exist Subqueries for Filters**: Replaced the full table scan with targeted existence checks (`Channel::whereHas('eNewspapers', ...)` and `Topic::whereHas('eNewspapers', ...)`).
+3. **Request Attribute Language Cache**: Shared resolved `$subscribedLanguageIds` via `$request->attributes->set('subscribed_language_ids', ...)` to reuse across `AppServiceProvider`.
+4. **Relationship Wildcard Compatibility**: Bypassed selective column projections on `ENewspaper` and its relationships to avoid unmigrated/missing database field errors (e.g., `language_code` vs `code`).
+
+### Files Modified
+* [ENewspaperFrontController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/ENewspaperFrontController.php)
+
+### Code Comparison
+```diff
+--- [ORIGINAL CODE - ENewspaperFrontController.php]
++++ [OPTIMIZED CODE - ENewspaperFrontController.php]
+@@ -20,11 +20,4 @@
+-        if ($userId) {
+-            $subscribedLanguageIds = NewsLanguageSubscriber::where('user_id', $userId)->pluck('news_language_id');
+-        } else { ... }
++        $settingsCache = $this->getSettingsCache($request);
++        $subscribedLanguageIds = $this->getSubscribedLanguageIds($userId, $request);
+ 
+-        $allEpapers = ENewspaper::with(['channel', 'topic'])->get();
+-        $epaperChannels = $allEpapers->pluck('channel')->filter()->unique('id')->sortBy('name')->values();
++        $epaperChannels = \App\Models\Channel::select('id', 'name', 'slug', 'logo')
++            ->whereHas('eNewspapers', function ($q) use ($subscribedLanguageIds) {
++                $q->whereIn('news_language_id', $subscribedLanguageIds)->where('type', 'paper');
++            })->orderBy('name', 'asc')->get();
+ 
+-        $socialsettings = Setting::pluck('value', 'name');
++        $socialsettings = $settingsCache->map(fn($item) => $item->value);
+```
+
+### Impact & Scalability
+* **`/e-newspaper`**: Reduced queries from `21 Statements` (6 duplicates) down to `10 Statements` (0 duplicates); Models reduced from `169 Models` down to `15 Models` (0 Setting models).
+* **`/e-newspaper/{id}/pdf`**: Reduced queries from `14 Statements` (1 duplicate) down to `5 Statements` (0 duplicates); Models reduced from `9 Models` down to `3 Models` (0 Setting models).
+
+---
+
+## 22. Videos & Audios Pages Query and Cache Optimizations
+
+### Root Cause
+1. Both `VideoController` and `AudioController` triggered a database query `select name, value, updated_at from settings` in `AppServiceProvider` because they did not initialize or register the settings cache in request attributes.
+2. In `VideoController`, an expensive pluck query on `Post` was executed to fetch `$topicIds` that were never referenced or passed to the view, causing a wasted full table scan.
+3. In `AudioController`, a heavy `Post` pluck table scan query was run to construct the topics filter list, which was then resolved with a duplicate `Topic::whereIn` lookup query.
+4. Redundant relationships (`topic`) and columns (such as large HTML description texts) were retrieved by using generic `with(...)` and `SELECT *` queries.
+
+### The Solution & Rationale
+1. Registered settings cache and news language lists in request attributes to eliminate duplicate queries and setting model hydrations.
+2. Deleted the unused `$topicIds` query in `VideoController`.
+3. Replaced the pluck-based filter query in `AudioController` with an optimized relationship subquery (`Topic::whereHas('posts', ...)`).
+4. Standardized selective column projections on `Post`, `Channel`, and `Topic` relationships.
+
+### Files Modified
+* [VideoController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/VideoController.php)
+* [AudioController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/AudioController.php)
+
+### Code Comparison
+```diff
+--- [ORIGINAL CODE - VideoController.php]
++++ [OPTIMIZED CODE - VideoController.php]
+@@ -39,9 +39,4 @@
+-        $topicIds = Post::where('type', 'video')
+-            ->whereNotNull('topic_id')
+-            ->pluck('topic_id')
+-            ->unique()
+-            ->filter()
+-            ->toArray();
+-            
+-        $query = Post::with(['topic', 'channel'])
++        $query = Post::select('id', 'title', 'slug', 'video_thumb', 'comment', 'view_count', 'publish_date', 'pubdate', 'channel_id')
++            ->with(['channel' => fn($q) => $q->select('id', 'name', 'slug', 'logo')])
+             ->where('posts.status', 'active');
+```
+
+```diff
+--- [ORIGINAL CODE - AudioController.php]
++++ [OPTIMIZED CODE - AudioController.php]
+@@ -40,9 +40,8 @@
+-        $topicIds = Post::where('type', 'audio')
+-            ->whereNotNull('topic_id')
+-            ->pluck('topic_id')
+-            ->unique()
+-            ->filter()
+-            ->toArray();
++        $topics_for_filter = Topic::select('id', 'name', 'slug')
++            ->whereHas('posts', function ($q) use ($subscribedLanguageIds) {
++                $q->where('status', 'active')
++                  ->where('type', 'audio')
++                  ->whereIn('news_language_id', $subscribedLanguageIds);
++            })->get();
+```
+
+### Impact & Scalability
+* **`/videos`**: Reduced queries from `7 Statements` down to `5 Statements` (0 duplicates); Models reduced from `13 Models` down to `10 Models` (0 Setting models).
+* **`/audios`**: Reduced queries from `8 Statements` down to `7 Statements` (0 duplicates); Models reduced from `4 Models` down to `3 Models` (0 Setting models).
+
+---
+
+## 23. Membership Plan Page & View Composer Caching Optimizations
+
+### Root Cause
+1. On `/membership` page load, the database was queried to retrieve payment settings and plucking standard configurations (like `free_trial_status`), causing redundant disk and CPU cycles.
+2. In the View Composer (`AppServiceProvider.php`), settings and active language subscriptions were retrieved directly from database queries on every page request, completely bypassing View Composer caches and adding 2 persistent duplicate queries per load.
+3. Authenticated user's subscription records were lazy-loaded inside `membership_plan.blade.php`, triggering N+1 query loops.
+
+### The Solution & Rationale
+1. Cached active `PaymentSetting` model forever inside `MembershipController.php`, clearing it dynamically when payment settings are modified or deleted in the admin backend.
+2. Cached View Composer settings table query forever under key `view_composer_settings_list` and user subscribed news language IDs under `user_subscribed_languages_{userId}` for 1 hour.
+3. Preloaded the `subscription` relationship on the logged-in user inside `MembershipController.php` using `$user->load('subscription')` to prevent lazy-loading.
+4. Used `CachingService::getSystemSettings('free_trial_status')` to retrieve free trial configuration from in-memory cache.
+
+### Files Modified
+* [MembershipController.php](file:///c:/Users/user/Downloads/Code - v1.4.9/app/Http/Controllers/MembershipController.php)
+* [AppServiceProvider.php](file:///c:/Users/user/Downloads/Code - v1.4.9/app/Providers/AppServiceProvider.php)
+
+### Code Comparison
+```diff
+--- [ORIGINAL CODE - MembershipController.php]
++++ [OPTIMIZED CODE - MembershipController.php]
+@@ -16,8 +16,10 @@
+-        $paymentSetting = PaymentSetting::where('status', true)->first();
++        $paymentSetting = \Illuminate\Support\Facades\Cache::rememberForever('active_payment_setting', function () {
++            return PaymentSetting::where('status', true)->first();
++        });
+         $currency       = $paymentSetting->currency_symbol ?? '$';
+ 
+-        $membershipSettings = Setting::whereIn('name', [
+-            'free_trial_status',
+-        ])->pluck('value', 'name');
++        $freeTrialStatus = \App\Services\CachingService::getSystemSettings('free_trial_status') ?? '0';
+ 
+         // Redirect if free trial is enabled
+-        if (($membershipSettings['free_trial_status'] ?? 0) == 1) {
++        if ($freeTrialStatus == '1') {
+             return redirect()->route('home');
+         }
+ 
+         $user_data = $user = Auth::user();
++        if ($user) {
++            $user->load('subscription');
++        }
+```
+
+```diff
+--- [ORIGINAL CODE - AppServiceProvider.php]
++++ [OPTIMIZED CODE - AppServiceProvider.php]
+@@ -114,2 +114,4 @@
+-                    $allSettings = \Illuminate\Support\Facades\DB::table('settings')->select('name', 'value', 'updated_at')->get()->keyBy('name');
++                    $allSettings = \Illuminate\Support\Facades\Cache::rememberForever('view_composer_settings_list', function () {
++                        return \Illuminate\Support\Facades\DB::table('settings')->select('name', 'value', 'updated_at')->get()->keyBy('name');
++                    });
+@@ -134,2 +136,4 @@
+-                        $subscribedLanguageIds = NewsLanguageSubscriber::where('user_id', $userId)->pluck('news_language_id');
++                        $subscribedLanguageIds = \Illuminate\Support\Facades\Cache::remember("user_subscribed_languages_{$userId}", 3600, function () use ($userId) {
++                            return NewsLanguageSubscriber::where('user_id', $userId)->pluck('news_language_id');
++                        });
+```
+
+### Impact & Scalability
+* **`/membership` (Guest)**: Reduced queries from `7 Statements` down to `4 Statements` (0 duplicates); Models reduced from `23 Models` down to `22 Models`.
+* **`/membership` (Logged-in)**: Reduced queries from `13 Statements` down to `9 Statements` (0 duplicates); Models reduced from `26 Models` down to `25 Models`.
+* **Global impact**: Setting query and news language subscriber queries inside the View Composer are completely cached, saving 2 queries on every single request across the entire site.
+
+---
+
+## 15. User Account & Dashboard Performance Optimization
+
+### Root Cause
+The User Account Profile (`/my-account`) and its 4 subpages executed redundant database queries and hydrated unnecessary Eloquent models:
+1. **Active Theme Query:** Every page request made a query to check the active default theme slug (`select slug from themes where is_default = '1' limit 1`).
+2. **Followed Channels (`/my-account/followings`):** Queried the full table schema of followed channels, retrieving heavy text columns that were completely unused on this page.
+3. **Bookmarks (`/my-account/bookmarks`):** Made duplicate news languages subscriber queries instead of reusing the user's cached subscribed language IDs.
+4. **Subscription Details (`/my-account/subscription`):** Fetched all plans, features, and plan tenures from the database using `Plan::with(...)` but the variable was completely unused in the Blade layout. Eager-loaded the subscription model with unnecessary `planTenure` and `transactions` relationships.
+5. **Transaction Details (`/my-account/transaction`):** Fetched all columns of the `transaction` table and attempted to select a non-existent `plan_name` column, resulting in a database exception error.
+
+### The Solution & Rationale
+1. **Cached Theme Slug:** Cached the default theme slug query forever as `active_theme_slug` inside `helper.php` and set invalidation observers in `AppServiceProvider.php`.
+2. **Selective Columns:** Applied selective column projections (`channels.id`, `channels.name`, `channels.slug`, `channels.logo`, `channels.follow_count`) to followed channels and transactions.
+3. **Bookmarks Cache Re-use:** Read news language preferences directly from the `user_subscribed_languages_{userId}` cache in `favoritePosts()`.
+4. **Eager Loading Restructuring:** Load only essential relations (`plan:id,name` and `feature:id,number_of_articles,...`) for the subscription details page and fully deleted the unused `Plan::with(...)` query.
+5. **JSON Accessor:** Created a `plan_name` accessor in the `Transaction` model that falls back to the plan name stored in the `plan_details` JSON array.
+
+### Files Modified
+* [FrontUserController.php](file:///c:/Users/user/Downloads/Code - v1.4.9/app/Http/Controllers/FrontUserController.php)
+* [helper.php](file:///c:/Users/user/Downloads/Code - v1.4.9/app/Helpers/helper.php)
+* [AppServiceProvider.php](file:///c:/Users/user/Downloads/Code - v1.4.9/app/Providers/AppServiceProvider.php)
+* [Transaction.php](file:///c:/Users/user/Downloads/Code - v1.4.9/app/Models/Transaction.php)
+
+### Code Comparison
+```diff
+--- [ORIGINAL CODE - FrontUserController.php]
++++ [OPTIMIZED CODE - FrontUserController.php]
+@@ -47,3 +47,5 @@
+-        $channelData = auth()->user()->subscriptions()->paginate(8);
++        $channelData = auth()->user()->subscriptions()
++            ->select('channels.id', 'channels.name', 'channels.slug', 'channels.logo', 'channels.follow_count')
++            ->paginate(8);
+ 
+@@ -63,3 +65,5 @@
+-            $subscribedLanguageIds = NewsLanguageSubscriber::where('user_id', $userId)->pluck('news_language_id');
++            $subscribedLanguageIds = \Illuminate\Support\Facades\Cache::remember("user_subscribed_languages_{$userId}", 3600, function () use ($userId) {
++                return NewsLanguageSubscriber::where('user_id', $userId)->pluck('news_language_id');
++            });
+ 
+@@ -218,17 +222,17 @@
+-        $subscription = $user->subscription()->with(['feature', 'plan', 'planTenure', 'transactions'])->first();
+-
+-        $currency = $paymentSetting->currency ?? '$';
+-
+-        $membership_data = Plan::with(['features_plan', 'planTenures' => function ($query) {
+-            $query->orderBy('price', 'asc');
+-        }])->get();
+-
+-        if ($subscription) {
+-            $membership_data = $membership_data->filter(function ($plan) use ($subscription) {
+-                return $plan->id === $subscription->plan_id; // Filter to only the subscribed plan
+-            });
+-        }
++        $subscription = $user->subscription()->with([
++            'feature:id,number_of_articles,number_of_stories,number_of_e_papers_and_magazines',
++            'plan:id,name'
++        ])->first();
++
++        $paymentSetting = \Illuminate\Support\Facades\Cache::rememberForever('active_payment_setting', function () {
++            return \App\Models\PaymentSetting::where('status', true)->first();
++        });
++        $currency = $paymentSetting->currency_symbol ?? '$';
++
++        $membership_data = collect();
+ 
+@@ -268,3 +272,4 @@
+-        $transactions = Transaction::where('user_id', $user->id)
++        $transactions = Transaction::select('id', 'plan_details', 'transaction_id', 'amount', 'created_at', 'status', 'user_id')
++            ->where('user_id', $user->id)
+```
+
+```diff
+--- [ORIGINAL CODE - Transaction.php]
++++ [OPTIMIZED CODE - Transaction.php]
+@@ -27,3 +27,11 @@
+     protected $casts = [
+         'plan_details' => 'array',
+     ];
++
++    /**
++     * Get the plan name from the serialized plan_details attribute.
++     */
++    public function getPlanNameAttribute()
++    {
++        return $this->plan_details['plan']['plan_name'] ?? 'N/A';
++    }
+```
+
+### Impact & Scalability
+* **`/my-account`**: Dropped from **5** to **4** queries.
+* **`/my-account/followings`**: Dropped from **7** to **6** queries.
+* **`/my-account/bookmarks`**: Dropped from **8** to **6** queries.
+* **`/my-account/subscription`**: Dropped from **13** to **7** queries; Eloquent model hydration decreased from **28** models down to **5** models.
+* **`/my-account/transaction`**: Dropped from **6** to **5** queries, and fixed SQL exception `Column not found: plan_name`.
+* **Global Impact:** Active theme slug cached forever, saving 1 query on all site pages.
+
+---
+
+## 16. Static & Informational Pages Query Optimization
+
+### Root Cause
+Informational pages: Contact Us (`/contact-us`), About Us (`/about-us`), Privacy Policies (`/privacy-policies`), and Terms & Conditions (`/terms-and-condition`) queried the database directly to retrieve individual settings rows (`about_us`, `privacy_policy`, `terms_conditions`), resulting in N+1 database queries and Setting model hydrations.
+
+### The Solution & Rationale
+Swapped raw database queries inside the controllers with local array/collection lookups using the forever-cached `'view_composer_settings_list'` collection. Cloned the objects to prevent in-memory cache contamination.
+
+### Files Modified
+* [AboutUsController.php](file:///c:/Users/user/Downloads/Code - v1.4.9/app/Http/Controllers/AboutUsController.php)
+* [FooterController.php](file:///c:/Users/user/Downloads/Code - v1.4.9/app/Http/Controllers/FooterController.php)
+
+### Code Comparison
+```diff
+--- [ORIGINAL CODE - AboutUsController.php]
++++ [OPTIMIZED CODE - AboutUsController.php]
+@@ -13,6 +13,12 @@
+-        $about_us = Setting::select('name', 'value', 'updated_at')
+-            ->where('name', 'about_us')
+-            ->first();
++        $settings = \Illuminate\Support\Facades\Cache::rememberForever('view_composer_settings_list', function () {
++            return \Illuminate\Support\Facades\DB::table('settings')->select('name', 'value', 'updated_at')->get()->keyBy('name');
++        });
++
++        $about_us = $settings->get('about_us') ?? null;
+ 
+         if (! $about_us) {
+-            $about_us             = new Setting();
+-            $about_us->value      = "About us not set";
+-            $about_us->updated_at = Carbon::now();
++            $about_us = (object)[
++                'value'      => 'About us not set',
++                'updated_at' => Carbon::now()->toDateTimeString(),
++            ];
++        } else {
++            $about_us = clone $about_us;
++        }
+```
+
+```diff
+--- [ORIGINAL CODE - FooterController.php]
++++ [OPTIMIZED CODE - FooterController.php]
+@@ -16,11 +16,10 @@
+-        $privacyPolicy = Setting::select('name', 'value', 'updated_at')
+-            ->where('name', 'privacy_policy')
+-            ->first();
+-
+-        // Attempt to read property "updated_at" on null
+-        if (! $privacyPolicy) {
+-            $privacyPolicy             = new Setting();
+-            $privacyPolicy->value      = 'Privacy Policy not set';
+-            $privacyPolicy->updated_at = Carbon::now();
+-        }
++        $settings = \Illuminate\Support\Facades\Cache::rememberForever('view_composer_settings_list', function () {
++            return \Illuminate\Support\Facades\DB::table('settings')->select('name', 'value', 'updated_at')->get()->keyBy('name');
++        });
++
++        $privacyPolicy = $settings->get('privacy_policy') ?? null;
++
++        if (! $privacyPolicy) {
++            $privacyPolicy = (object)[
++                'value'      => 'Privacy Policy not set',
++                'updated_at' => Carbon::now()->toDateTimeString(),
++            ];
++        }
+```
+
+### Impact & Scalability
+* **`/contact-us`**: 4 queries.
+* **`/about-us`**: Reduced queries from **5** to **4** statements, and Setting model hydrations reduced to **0**.
+* **`/privacy-policies`**: Reduced queries from **5** to **4** statements, and Setting model hydrations reduced to **0**.
+* **`/terms-and-condition`**: Reduced queries from **5** to **4** statements, and Setting model hydrations reduced to **0**.
+
 

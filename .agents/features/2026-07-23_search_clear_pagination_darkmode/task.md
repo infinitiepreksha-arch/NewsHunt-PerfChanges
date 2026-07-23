@@ -1,0 +1,6 @@
+- [x] Remove `text-primary` class from the clear buttons in `search-result.blade.php`
+- [x] Remove `text-black` class from pagination in `search-news.js`
+- [x] Add custom styling for `.btn-outline-primary` and pagination to `custom.css`
+- [x] Verify light/dark mode for Clear button on search results page
+- [x] Verify light/dark mode for pagination on search results page
+- [x] Verify light/dark mode for pagination on topics/channels pages

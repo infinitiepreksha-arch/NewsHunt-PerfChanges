@@ -1,0 +1,30 @@
+# Master Task Checklist: Full Search & Filtering System (End-to-End)
+
+- [x] 1. Navbar Search Modal (`#sidebar_search_input`)
+  - [x] Live search suggestions dropdown on typing
+  - [x] Redirect to `/posts?search=<query>` on `Enter` keypress inside modal input
+- [x] 2. Search Results Page Header & Live Search (`/posts`)
+  - [x] Centered search input layout (`style="max-width: 450px; margin: 0 auto;"`)
+  - [x] Pre-populate `#page_search_input` from URL `?search=` parameter
+  - [x] 300ms debounced live search on `#page_search_input` with browser URL sync (`pushState`)
+  - [x] Dynamic sentence subtitle (`Showing 1 to 15 posts out of 753 Total for "query"`)
+- [x] 3. Interactive Filtering Engine
+  - [x] Channels filter checkboxes with "All Channels" auto-toggle logic
+  - [x] Topics filter checkboxes
+  - [x] Sort By radio options (`most-recent`, `most-read`, `most-liked`)
+- [x] 4. Backend Query & Developer JSON Response (`SearchPostController.php`)
+  - [x] Query optimization (7 queries / 4.27ms / 0 Setting models baseline)
+  - [x] Normalize `$channels` input array (stripping `'all'` values)
+  - [x] Use `leftJoin('channels')` and `leftJoin('topics')` on `posts` table
+  - [x] Return clean developer JSON pagination payload (`total`, `per_page`, `current_page`, `last_page`, `prev_page_url`, `next_page_url`)
+- [x] 5. Custom NewsHunt Pagination Engine (`search-news.js`)
+  - [x] Implement `renderPagination(pagination)` matching `vendor/custom-pagination.blade.php` (`<`, `1`, `2`, `...`, `5`, `>`)
+  - [x] Dynamic URL construction (`buildPageUrl`) preserving active search query and filter parameters across page links
+  - [x] Event delegation for instant AJAX page link clicks
+- [x] 6. Rich Card Template Component (`search-news.js`)
+  - [x] Render Topic Tag Overlay (top-left)
+  - [x] Render Play Icon Overlay for videos and audio
+  - [x] Render Channel Logo & Channel Name link
+  - [x] Render Metric Counters: Views (👁️ `bi-eye`), Likes (❤️ `bi-heart-fill`), and Comments (💬 `unicon-chat`)
+- [x] 7. Code Verification & Safety
+  - [x] Run `php -l app/Http/Controllers/SearchPostController.php` (Passed with 0 errors)
