@@ -1249,3 +1249,79 @@ The User Account Profile (`/my-account`) and its 4 subpages executed redundant d
 * **`/my-account/transaction`**: Dropped from **6** to **5** queries, and fixed SQL exception `Column not found: plan_name`.
 * **Global Impact:** Active theme slug cached forever, saving 1 query on all site pages.
 
+---
+
+## 16. Static & Informational Pages Query Optimization
+
+### Root Cause
+Informational pages: Contact Us (`/contact-us`), About Us (`/about-us`), Privacy Policies (`/privacy-policies`), and Terms & Conditions (`/terms-and-condition`) queried the database directly to retrieve individual settings rows (`about_us`, `privacy_policy`, `terms_conditions`), resulting in N+1 database queries and Setting model hydrations.
+
+### The Solution & Rationale
+Swapped raw database queries inside the controllers with local array/collection lookups using the forever-cached `'view_composer_settings_list'` collection. Cloned the objects to prevent in-memory cache contamination.
+
+### Files Modified
+* [AboutUsController.php](file:///c:/Users/user/Downloads/Code - v1.4.9/app/Http/Controllers/AboutUsController.php)
+* [FooterController.php](file:///c:/Users/user/Downloads/Code - v1.4.9/app/Http/Controllers/FooterController.php)
+
+### Code Comparison
+```diff
+--- [ORIGINAL CODE - AboutUsController.php]
++++ [OPTIMIZED CODE - AboutUsController.php]
+@@ -13,6 +13,12 @@
+-        $about_us = Setting::select('name', 'value', 'updated_at')
+-            ->where('name', 'about_us')
+-            ->first();
++        $settings = \Illuminate\Support\Facades\Cache::rememberForever('view_composer_settings_list', function () {
++            return \Illuminate\Support\Facades\DB::table('settings')->select('name', 'value', 'updated_at')->get()->keyBy('name');
++        });
++
++        $about_us = $settings->get('about_us') ?? null;
+ 
+         if (! $about_us) {
+-            $about_us             = new Setting();
+-            $about_us->value      = "About us not set";
+-            $about_us->updated_at = Carbon::now();
++            $about_us = (object)[
++                'value'      => 'About us not set',
++                'updated_at' => Carbon::now()->toDateTimeString(),
++            ];
++        } else {
++            $about_us = clone $about_us;
++        }
+```
+
+```diff
+--- [ORIGINAL CODE - FooterController.php]
++++ [OPTIMIZED CODE - FooterController.php]
+@@ -16,11 +16,10 @@
+-        $privacyPolicy = Setting::select('name', 'value', 'updated_at')
+-            ->where('name', 'privacy_policy')
+-            ->first();
+-
+-        // Attempt to read property "updated_at" on null
+-        if (! $privacyPolicy) {
+-            $privacyPolicy             = new Setting();
+-            $privacyPolicy->value      = 'Privacy Policy not set';
+-            $privacyPolicy->updated_at = Carbon::now();
+-        }
++        $settings = \Illuminate\Support\Facades\Cache::rememberForever('view_composer_settings_list', function () {
++            return \Illuminate\Support\Facades\DB::table('settings')->select('name', 'value', 'updated_at')->get()->keyBy('name');
++        });
++
++        $privacyPolicy = $settings->get('privacy_policy') ?? null;
++
++        if (! $privacyPolicy) {
++            $privacyPolicy = (object)[
++                'value'      => 'Privacy Policy not set',
++                'updated_at' => Carbon::now()->toDateTimeString(),
++            ];
++        }
+```
+
+### Impact & Scalability
+* **`/contact-us`**: 4 queries.
+* **`/about-us`**: Reduced queries from **5** to **4** statements, and Setting model hydrations reduced to **0**.
+* **`/privacy-policies`**: Reduced queries from **5** to **4** statements, and Setting model hydrations reduced to **0**.
+* **`/terms-and-condition`**: Reduced queries from **5** to **4** statements, and Setting model hydrations reduced to **0**.
+
+

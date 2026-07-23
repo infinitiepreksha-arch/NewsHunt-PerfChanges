@@ -12,16 +12,20 @@ class FooterController extends Controller
     */
     public function privacyEndPolicy()
     {
-        $title         = __('frontend-labels.privacy_policy.title');
-        $privacyPolicy = Setting::select('name', 'value', 'updated_at')
-            ->where('name', 'privacy_policy')
-            ->first();
+        $title = __('frontend-labels.privacy_policy.title');
+
+        $settings = \Illuminate\Support\Facades\Cache::rememberForever('view_composer_settings_list', function () {
+            return \Illuminate\Support\Facades\DB::table('settings')->select('name', 'value', 'updated_at')->get()->keyBy('name');
+        });
+
+        $privacyPolicy = $settings->get('privacy_policy') ?? null;
 
         // Attempt to read property "updated_at" on null
         if (! $privacyPolicy) {
-            $privacyPolicy             = new Setting();
-            $privacyPolicy->value      = 'Privacy Policy not set';
-            $privacyPolicy->updated_at = Carbon::now();
+            $privacyPolicy = (object)[
+                'value'      => 'Privacy Policy not set',
+                'updated_at' => Carbon::now()->toDateTimeString(),
+            ];
         }
 
         $theme = getTheme();
@@ -37,9 +41,19 @@ class FooterController extends Controller
     {
         $title = __('frontend-labels.terms_and_conditions.title');
 
-        $termsOfCondition = Setting::select('name', 'value', 'updated_at')
-            ->where('name', 'terms_conditions')
-            ->first();
+        $settings = \Illuminate\Support\Facades\Cache::rememberForever('view_composer_settings_list', function () {
+            return \Illuminate\Support\Facades\DB::table('settings')->select('name', 'value', 'updated_at')->get()->keyBy('name');
+        });
+
+        $termsOfCondition = $settings->get('terms_conditions') ?? null;
+
+        if (! $termsOfCondition) {
+            $termsOfCondition = (object)[
+                'value'      => 'Terms & Conditions not set',
+                'updated_at' => Carbon::now()->toDateTimeString(),
+            ];
+        }
+
         $theme = getTheme();
         $data  = compact('title', 'termsOfCondition', 'theme');
         return view('front_end/' . $theme . '/pages/terms_and_condition', $data);

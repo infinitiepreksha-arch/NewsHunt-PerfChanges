@@ -40,10 +40,10 @@ This document lists all customer-facing web pages and routes in the NewsHunt app
 | **My Followings** (`/my-account/followings`) | `FrontUserController@followingsChannels` | **Optimized** | 7 | **6** | 4 | **4** | Applied selective column projection on Channel relation. |
 | **My Subscription** (`/my-account/subscription`) | `FrontUserController@subscriptionDetails` | **Optimized** | 13 | **7** | 28 | **5** | Eager-loaded subscription with only needed columns, removed unused Plan::with query. |
 | **My Transactions** (`/my-account/transaction`) | `FrontUserController@transactionDetails` | **Optimized** | 6 | **5** | 3 | **3** | Selective columns, resolved SQL exception via plan_name dynamic JSON accessor. |
-| **Contact Us** (`/contact-us`) | `ContactUsController@index` | **Pending** | ~10 | *TBD* | ~10 | *TBD* | *Pending settings attributes cache integration.* |
-| **About Us** (`/about-us`) | `AboutUsController@index` | **Pending** | ~10 | *TBD* | ~10 | *TBD* | *Pending settings attributes cache integration.* |
-| **Privacy Policies** (`/privacy-policies`) | `FooterController@privacyEndPolicy` | **Pending** | ~10 | *TBD* | ~10 | *TBD* | *Pending settings attributes cache integration.* |
-| **Terms & Conditions** (`/terms-and-condition`) | `FooterController@termsAndCondition` | **Pending** | ~10 | *TBD* | ~10 | *TBD* | *Pending settings attributes cache integration.* |
+| **Contact Us** (`/contact-us`) | `ContactUsController@index` | **Optimized** | 4 | **4** | 2 | **2** | Leverages View Composer request attributes setting and language cache. |
+| **About Us** (`/about-us`) | `AboutUsController@index` | **Optimized** | 5 | **4** | 3 | **2** | Retrieves about_us setting from view_composer_settings_list Cache. |
+| **Privacy Policies** (`/privacy-policies`) | `FooterController@privacyEndPolicy` | **Optimized** | 5 | **4** | 3 | **2** | Retrieves privacy_policy setting from view_composer_settings_list Cache. |
+| **Terms & Conditions** (`/terms-and-condition`) | `FooterController@termsAndCondition` | **Optimized** | 5 | **4** | 3 | **2** | Retrieves terms_conditions setting from view_composer_settings_list Cache. |
 
 ---
 

@@ -1074,3 +1074,18 @@ Deferred AJAX loading for Navbar Category Dropdowns and homepage sliders (Most R
   * `/my-account/bookmarks`: Queries reduced from `8 Statements` down to `6 Statements`.
   * `/my-account/subscription`: Queries reduced from `13 Statements` down to `7 Statements`; Eloquent models reduced from `28 Models` down to `5 Models`!
   * `/my-account/transaction`: Queries reduced from `6 Statements` down to `5 Statements`.
+
+### [2026-07-23] Static & Informational Pages Query Optimization
+
+* **Feature**: Optimized database query execution and Eloquent model hydrations for informational/static pages: Contact Us (`/contact-us`), About Us (`/about-us`), Privacy Policies (`/privacy-policies`), and Terms & Conditions (`/terms-and-condition`).
+* **Files Modified**:
+  * [AboutUsController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/AboutUsController.php)
+  * [FooterController.php](file:///c:/Users/user%20/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/FooterController.php)
+* **Logic Changes**:
+  * Swapped direct database selects for `about_us`, `privacy_policy`, and `terms_conditions` setting rows with local lookups from the forever-cached settings collection (`view_composer_settings_list`).
+  * Cloned cached collections/objects to prevent unintended in-memory mutations.
+* **Verification Results**:
+  * `/contact-us`: 4 queries (all Laravel auth/permissions statements, 0 settings table hits).
+  * `/about-us`: Queries reduced from `5 Statements` down to `4 Statements`; setting model hydrations reduced to `0`.
+  * `/privacy-policies`: Queries reduced from `5 Statements` down to `4 Statements`; setting model hydrations reduced to `0`.
+  * `/terms-and-condition`: Queries reduced from `5 Statements` down to `4 Statements`; setting model hydrations reduced to `0`.

@@ -234,9 +234,17 @@ This document is the master log of all feature updates, performance optimization
 
 ---
 
+### 15. [2026-07-23] Static & Informational Pages Query Optimization
+* **Task Description:** Replaced direct database queries for about_us, privacy_policy, and terms_conditions settings with fast local lookups from the view_composer_settings_list Cache.
+* **Files Changed:**
+  * [app/Http/Controllers/AboutUsController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/AboutUsController.php)
+  * [app/Http/Controllers/FooterController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/FooterController.php)
+
+---
+
 ## 📌 Master Go-To Index of All Changed Codebase Files
 
-**Total Unique Codebase Files Modified/Created Till Now:** 51 Files
+**Total Unique Codebase Files Modified/Created Till Now:** 53 Files
 
 
 | # | File Path | Primary Task / Feature | Date Modified |
@@ -295,3 +303,5 @@ This document is the master log of all feature updates, performance optimization
 | 45 | [app/Http/Controllers/MembershipController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/MembershipController.php) | Membership Query & Settings Caching | 2026-07-23 |
 | 46 | [app/Http/Controllers/FrontUserController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/FrontUserController.php) | User Dashboard Performance Optimization | 2026-07-23 |
 | 47 | [app/Models/Transaction.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Models/Transaction.php) | Transaction plan_name JSON Accessor | 2026-07-23 |
+| 48 | [app/Http/Controllers/AboutUsController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/AboutUsController.php) | About Us Settings Caching Optimization | 2026-07-23 |
+| 49 | [app/Http/Controllers/FooterController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/FooterController.php) | Privacy & Terms Settings Caching Optimization | 2026-07-23 |
