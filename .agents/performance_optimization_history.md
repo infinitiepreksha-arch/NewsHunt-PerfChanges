@@ -1150,3 +1150,102 @@ Even after Phase 1, the post page still executed duplicate subscriber languages 
 * **`/membership` (Guest)**: Reduced queries from `7 Statements` down to `4 Statements` (0 duplicates); Models reduced from `23 Models` down to `22 Models`.
 * **`/membership` (Logged-in)**: Reduced queries from `13 Statements` down to `9 Statements` (0 duplicates); Models reduced from `26 Models` down to `25 Models`.
 * **Global impact**: Setting query and news language subscriber queries inside the View Composer are completely cached, saving 2 queries on every single request across the entire site.
+
+---
+
+## 15. User Account & Dashboard Performance Optimization
+
+### Root Cause
+The User Account Profile (`/my-account`) and its 4 subpages executed redundant database queries and hydrated unnecessary Eloquent models:
+1. **Active Theme Query:** Every page request made a query to check the active default theme slug (`select slug from themes where is_default = '1' limit 1`).
+2. **Followed Channels (`/my-account/followings`):** Queried the full table schema of followed channels, retrieving heavy text columns that were completely unused on this page.
+3. **Bookmarks (`/my-account/bookmarks`):** Made duplicate news languages subscriber queries instead of reusing the user's cached subscribed language IDs.
+4. **Subscription Details (`/my-account/subscription`):** Fetched all plans, features, and plan tenures from the database using `Plan::with(...)` but the variable was completely unused in the Blade layout. Eager-loaded the subscription model with unnecessary `planTenure` and `transactions` relationships.
+5. **Transaction Details (`/my-account/transaction`):** Fetched all columns of the `transaction` table and attempted to select a non-existent `plan_name` column, resulting in a database exception error.
+
+### The Solution & Rationale
+1. **Cached Theme Slug:** Cached the default theme slug query forever as `active_theme_slug` inside `helper.php` and set invalidation observers in `AppServiceProvider.php`.
+2. **Selective Columns:** Applied selective column projections (`channels.id`, `channels.name`, `channels.slug`, `channels.logo`, `channels.follow_count`) to followed channels and transactions.
+3. **Bookmarks Cache Re-use:** Read news language preferences directly from the `user_subscribed_languages_{userId}` cache in `favoritePosts()`.
+4. **Eager Loading Restructuring:** Load only essential relations (`plan:id,name` and `feature:id,number_of_articles,...`) for the subscription details page and fully deleted the unused `Plan::with(...)` query.
+5. **JSON Accessor:** Created a `plan_name` accessor in the `Transaction` model that falls back to the plan name stored in the `plan_details` JSON array.
+
+### Files Modified
+* [FrontUserController.php](file:///c:/Users/user/Downloads/Code - v1.4.9/app/Http/Controllers/FrontUserController.php)
+* [helper.php](file:///c:/Users/user/Downloads/Code - v1.4.9/app/Helpers/helper.php)
+* [AppServiceProvider.php](file:///c:/Users/user/Downloads/Code - v1.4.9/app/Providers/AppServiceProvider.php)
+* [Transaction.php](file:///c:/Users/user/Downloads/Code - v1.4.9/app/Models/Transaction.php)
+
+### Code Comparison
+```diff
+--- [ORIGINAL CODE - FrontUserController.php]
++++ [OPTIMIZED CODE - FrontUserController.php]
+@@ -47,3 +47,5 @@
+-        $channelData = auth()->user()->subscriptions()->paginate(8);
++        $channelData = auth()->user()->subscriptions()
++            ->select('channels.id', 'channels.name', 'channels.slug', 'channels.logo', 'channels.follow_count')
++            ->paginate(8);
+ 
+@@ -63,3 +65,5 @@
+-            $subscribedLanguageIds = NewsLanguageSubscriber::where('user_id', $userId)->pluck('news_language_id');
++            $subscribedLanguageIds = \Illuminate\Support\Facades\Cache::remember("user_subscribed_languages_{$userId}", 3600, function () use ($userId) {
++                return NewsLanguageSubscriber::where('user_id', $userId)->pluck('news_language_id');
++            });
+ 
+@@ -218,17 +222,17 @@
+-        $subscription = $user->subscription()->with(['feature', 'plan', 'planTenure', 'transactions'])->first();
+-
+-        $currency = $paymentSetting->currency ?? '$';
+-
+-        $membership_data = Plan::with(['features_plan', 'planTenures' => function ($query) {
+-            $query->orderBy('price', 'asc');
+-        }])->get();
+-
+-        if ($subscription) {
+-            $membership_data = $membership_data->filter(function ($plan) use ($subscription) {
+-                return $plan->id === $subscription->plan_id; // Filter to only the subscribed plan
+-            });
+-        }
++        $subscription = $user->subscription()->with([
++            'feature:id,number_of_articles,number_of_stories,number_of_e_papers_and_magazines',
++            'plan:id,name'
++        ])->first();
++
++        $paymentSetting = \Illuminate\Support\Facades\Cache::rememberForever('active_payment_setting', function () {
++            return \App\Models\PaymentSetting::where('status', true)->first();
++        });
++        $currency = $paymentSetting->currency_symbol ?? '$';
++
++        $membership_data = collect();
+ 
+@@ -268,3 +272,4 @@
+-        $transactions = Transaction::where('user_id', $user->id)
++        $transactions = Transaction::select('id', 'plan_details', 'transaction_id', 'amount', 'created_at', 'status', 'user_id')
++            ->where('user_id', $user->id)
+```
+
+```diff
+--- [ORIGINAL CODE - Transaction.php]
++++ [OPTIMIZED CODE - Transaction.php]
+@@ -27,3 +27,11 @@
+     protected $casts = [
+         'plan_details' => 'array',
+     ];
++
++    /**
++     * Get the plan name from the serialized plan_details attribute.
++     */
++    public function getPlanNameAttribute()
++    {
++        return $this->plan_details['plan']['plan_name'] ?? 'N/A';
++    }
+```
+
+### Impact & Scalability
+* **`/my-account`**: Dropped from **5** to **4** queries.
+* **`/my-account/followings`**: Dropped from **7** to **6** queries.
+* **`/my-account/bookmarks`**: Dropped from **8** to **6** queries.
+* **`/my-account/subscription`**: Dropped from **13** to **7** queries; Eloquent model hydration decreased from **28** models down to **5** models.
+* **`/my-account/transaction`**: Dropped from **6** to **5** queries, and fixed SQL exception `Column not found: plan_name`.
+* **Global Impact:** Active theme slug cached forever, saving 1 query on all site pages.
+

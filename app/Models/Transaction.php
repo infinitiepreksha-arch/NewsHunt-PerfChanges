@@ -27,6 +27,14 @@ class Transaction extends Model
     protected $casts = [
         'plan_details' => 'array',
     ];
+
+    /**
+     * Get the plan name from the serialized plan_details attribute.
+     */
+    public function getPlanNameAttribute()
+    {
+        return $this->plan_details['plan']['plan_name'] ?? 'N/A';
+    }
     /**
      * Get the user that owns the transaction.
      */

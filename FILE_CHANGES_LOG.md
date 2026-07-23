@@ -224,9 +224,19 @@ This document is the master log of all feature updates, performance optimization
 
 ---
 
+### 14. [2026-07-23] User Account & Dashboard Performance Optimization
+* **Task Description:** Cached default theme slug, optimized followed channels pagination columns, reused subscribed news languages cache in bookmarks, stripped redundant relations and unused queries from subscription details, and defined plan_name JSON attribute accessor for transaction details.
+* **Files Changed:**
+  * [app/Http/Controllers/FrontUserController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/FrontUserController.php)
+  * [app/Helpers/helper.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Helpers/helper.php)
+  * [app/Providers/AppServiceProvider.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Providers/AppServiceProvider.php)
+  * [app/Models/Transaction.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Models/Transaction.php)
+
+---
+
 ## 📌 Master Go-To Index of All Changed Codebase Files
 
-**Total Unique Codebase Files Modified/Created Till Now:** 49 Files
+**Total Unique Codebase Files Modified/Created Till Now:** 51 Files
 
 
 | # | File Path | Primary Task / Feature | Date Modified |
@@ -283,3 +293,5 @@ This document is the master log of all feature updates, performance optimization
 | 43 | [public/front_end/classic/js/custom/search-news.js](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/public/front_end/classic/js/custom/search-news.js) | Search AJAX & pushState Paginator | 2026-07-16 |
 | 44 | [.gitignore](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/.gitignore) | Local IDE Folders & Scratch Script Exclusions | 2026-07-20 |
 | 45 | [app/Http/Controllers/MembershipController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/MembershipController.php) | Membership Query & Settings Caching | 2026-07-23 |
+| 46 | [app/Http/Controllers/FrontUserController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/FrontUserController.php) | User Dashboard Performance Optimization | 2026-07-23 |
+| 47 | [app/Models/Transaction.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Models/Transaction.php) | Transaction plan_name JSON Accessor | 2026-07-23 |

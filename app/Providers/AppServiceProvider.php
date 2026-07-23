@@ -86,6 +86,14 @@ class AppServiceProvider extends ServiceProvider
             \Illuminate\Support\Facades\Cache::forget('active_payment_setting');
         });
 
+        // Auto-clear active theme slug cache when modified
+        \App\Models\Theme::saved(function () {
+            \Illuminate\Support\Facades\Cache::forget('active_theme_slug');
+        });
+        \App\Models\Theme::deleted(function () {
+            \Illuminate\Support\Facades\Cache::forget('active_theme_slug');
+        });
+
         // Auto-clear NewsLanguageSubscriber cache when modified
         \App\Models\NewsLanguageSubscriber::saved(function ($model) {
             \Illuminate\Support\Facades\Cache::forget("user_subscribed_languages_{$model->user_id}");

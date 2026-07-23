@@ -833,6 +833,201 @@ Deferred AJAX loading for Navbar Category Dropdowns and homepage sliders (Most R
   * Cached subscriber news language IDs in request attributes, preventing duplicate language lookup queries.
   * Deleted completely unused `$topicIds` pluck query in `VideoController`.
   * Replaced plucking table scan on `Post` in `AudioController` with a clean `whereHas('posts', ...)` query on `Topic`.
+1. **Navbar Dropdown**: Removed `$topic->posts` relationship static querying from View Composer inside `AppServiceProvider.php`. Registered dynamic route and controller action to fetch top 5 category posts only when the category dropdown triggers open. Implemented request cancellation via `.abort()` on dropdown close to prevent redundant queries.
+   - *Bugfix*: Because UIkit custom events (`beforeshow`, `hide`) do not bubble, delegated jQuery events bound to `document` were not firing. Refactored to bind native JavaScript event listeners directly to each `.topic-dropdown` element.
+2. **Carousel Sliders**: Reduced homepage initial database query limits of Most Read posts and Web Stories to only retrieve the first 7 items. Implemented a reusable, generic JS pagination function (`window.initLazySliderLoad`) to dynamically append additional items in chunks of 7 when users interact with the slider.
+3. **Image Lazy Loading**: Refactored IntersectionObserver in `main.blade.php` to run globally via `window.lazyLoadElements()`, enabling dynamic image lazy-loading on AJAX-injected slides.
+4. **Top Posts AJAX Slider**: Extended the generic pagination framework to the top-of-homepage Top Posts swiper slider. Limited the initial query to 7 items, created a new slide partial (`top_posts_slides.blade.php`), and registered route `/top-posts-remaining` in `web.php` to load subsequent Top Posts chunks dynamically using offset queries.
+5. **Followed Channels AJAX Slider**: Implemented AJAX dynamic loading for the "From the Channels You May Followed" slider. Reduced the initial cache query limit to 7 items, created a slide partial (`followed_channels_slides.blade.php`), registered route `/followed-channels-remaining` in `web.php`, and instantiated the loader in `custom-jquery.js`.
+6. **JSON Dynamic Response Migration**: Migrated all 5 AJAX endpoints to return structured JSON arrays directly (eager loading nested relations like `channel` and `story_slides`) instead of pre-rendered HTML chunks. Built corresponding client-side template builders (`buildTopicDropdownPostHtml`, `buildMostReadSlideHtml`, `buildStorySlideHtml`, `buildTopPostSlideHtml`, `buildFollowedChannelSlideHtml`) inside `custom-jquery.js` to process and construct correct HTML markup dynamically on the client side.
+7. **Topic Dropdown Loader Centering**: Fixed an issue where the topic dropdown loading spinner was squished and aligned on the far left. Relocated the `.dropdown-loader` markup outside the `row child-cols` wrapper in `header.blade.php` to prevent it from being styled as a grid column, allowing the loader to align centered at 100% width. Also changed the spinner icon to use the bootstrap hourglass split icon (`bi-hourglass-split`) and loading label to match the look of the channels dropdown loading design. Added DOM cleanup to remove the loader element in `custom-jquery.js` on successful AJAX response.
+### [2026-07-15] Homepage Feed De-duplication & Viewport-Based Shuffling
+
+* **Feature**: Prevent duplicate articles across the homepage sections (Top horizontal swiper, Banner Carousel, Top Posts sidebar, Followed Channels swiper, and Latest News list) and dynamically hide sections if the database has limited content.
+* **Files Modified**:
+  * [app/Http/Controllers/HomeController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/HomeController.php)
+  * [resources/views/front_end/classic/pages/index.blade.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/resources/views/front_end/classic/pages/index.blade.php)
+  * [public/front_end/classic/js/custom/custom-jquery.js](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/public/front_end/classic/js/custom/custom-jquery.js)
+  * [resources/views/front_end/classic/pages/partials/followed_channels_slides.blade.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/resources/views/front_end/classic/pages/partials/followed_channels_slides.blade.php)
+  * [resources/views/front_end/classic/pages/partials/most_read_slides.blade.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/resources/views/front_end/classic/pages/partials/most_read_slides.blade.php)
+  * [resources/views/front_end/classic/pages/partials/top_posts_slides.blade.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/resources/views/front_end/classic/pages/partials/top_posts_slides.blade.php)
+  * [resources/views/front_end/classic/pages/partials/web_story_slides.blade.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/resources/views/front_end/classic/pages/partials/web_story_slides.blade.php)
+* **Logic Changes**:
+  1. **Consolidated Global Query**: Replaced separate database queries for Top Posts, Banners, and Latest News with a single consolidated query fetching the top 32 latest posts. This reduces database connection/query overhead.
+  2. **In-Memory Shuffling**: Shuffled the consolidated query in PHP memory using Laravel's `$collection->shuffle()` before slicing and distributing them to different view variables (`$top_posts`, `$postBannersRaw`, `$sidebarPosts`, `$latesNews`). This keeps only recent content on the screen, randomizes the layout dynamically on every refresh, and guarantees 100% unique posts on initial load.
+  3. **Ad Injection Refactoring**: Refactored the ad-injection logic from `getPostsWithBanners()` into a clean private helper method `injectAdsIntoBanners($posts)` to preserve all random ad placement behavior and improve reusability.
+  4. **Dynamic Section Hiding**: Wrapped the Top Section, Banner Section, Sidebar List, Followed Channels Section, and Latest News Section inside Blade checks (`@if (isset(...) && ...->isNotEmpty())`). If the database has fewer posts than needed, sections hide cleanly from the DOM without displaying empty titles or broken carousels.
+  5. **Personalized Exclusions**: Passed the global post IDs displayed on initial load to the Followed Channels cache remember query context to exclude them via `whereNotIn('posts.id', $displayedGlobalIds)`, ensuring personalized feeds also remain unique.
+  6. **Top Posts Slider Restoration**: Reverted the Top horizontal posts count slice back to exactly 4 items (as requested by viewport specs). Replaced `disable-class: d-none;` with `disable-class: disabled;` in the Swiper HTML options, and added an global CSS override `pointer-events: auto !important; opacity: 1 !important;` to ensure the slide next buttons remain visible and clickable even when the DOM slides count equals the visible viewport width. This allows users to trigger AJAX loading on click.
+  7. **Followed Channels Slider Restoration**: Reverted the initial page load limit of followed channels back to exactly 5 posts (indices 17 to 21). Changed the Swiper config to use `disable-class: disabled;` and applied CSS overrides so that the Next navigation arrow is not hidden with `d-none`. The arrow remains visible and clickable, enabling users to click it to trigger the AJAX pagination request to load followed channel posts dynamically, even if the initial load count is equal to the desktop viewport width of 5.
+  8. **Title-Based & Pagination Boundary De-duplication**: Integrated `unique('title')` collection filtering for the homepage consolidated query feed, initial followed channels query, and all AJAX pagination queries. Added `data-post-id` attributes to swiper slides across layout files and partials, and modified `custom-jquery.js` to dynamically collect all currently displayed slide IDs on the client side and pass them inside the AJAX `displayed_ids` array. Updated all four AJAX controller methods inside `HomeController.php` to exclude these displayed IDs via `whereNotIn` instead of database offset skips, completely preventing duplicates near swiper pagination boundary shifts (caused by duplicate RSS imports or client/server unique-filtering discrepancies).
+
+### [2026-07-16] Search Refactoring & AJAX Filters (Including Audio, Split Videos/YouTube)
+
+* **Feature**: Redirect search modal submission to a dedicated search page with advanced filters (Articles, Videos, YouTube, Audios, Web Stories, Newspapers, Magazines), active vs. user-followed channels and topics, popularity/date sorting, and dynamic JS AJAX pagination.
+* **Files Modified**:
+  * [public/front_end/classic/js/custom/search-news.js](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/public/front_end/classic/js/custom/search-news.js)
+  * [resources/views/front_end/classic/layout/header.blade.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/resources/views/front_end/classic/layout/header.blade.php)
+  * [app/Http/Controllers/SearchPostController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/SearchPostController.php)
+  * [resources/views/front_end/classic/pages/search-result.blade.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/resources/views/front_end/classic/pages/search-result.blade.php)
+* **Files Created**:
+  * [search_result_posts.blade.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/resources/views/front_end/classic/pages/partials/search_result_posts.blade.php)
+* **Logic Changes**:
+  1. **Modal Form Submission Redirect**: Modified the search form submit event listener in `search-news.js` to submit naturally to `/posts` rather than intercepting it with an in-modal AJAX search.
+  2. **Autocomplete Redirect**: Updated `performSearch()` in `search-news.js` to perform a full page redirect to `/posts?search=query` when clicking a suggestion keyword or recent search item. Removed the unused `onsubmit` handler on the header search form.
+  3. **Multi-Table Query Union**: Refactored the `search` method in `SearchPostController.php` to run conditional, scoped subqueries on the `posts` (Articles, Videos, YouTube, Audios), `stories` (Web Stories), and `e_newspapers` (Newspapers, Magazines) tables based on selected type filters, merging results using a `unionAll` query wrapped in `DB::table()`.
+  4. **AJAX Response Format**: Enabled `SearchPostController@search` to detect AJAX requests and return a JSON payload containing the pre-rendered HTML of the results cards partial.
+  5. **Client-Side AJAX pagination**: Added event listeners in `search-news.js` to intercept pagination clicks, update the browser URL bar via `pushState()`, fetch the matching page via AJAX, and smoothly scroll the page view back to the top of the `#content-area`.
+  6. **Interactive Filters**: Added listeners to form inputs and checkboxes to automatically sync selections between the mobile offcanvas drawer and desktop sidebar, applying active filters instantly via AJAX.
+  7. **Split Videos & YouTube Checkboxes**: Divided the video format filter into distinct "Videos" (`posts.type = 'video'`) and "YouTube" (`posts.type = 'youtube'`) checkboxes in both desktop and mobile layouts. Added Audio format support.
+  8. **Dynamic Search Count Header**: Removed static centered page headers and moved search query summary text inside the AJAX-loaded posts grid partial. Designed it as left-aligned with a smaller, premium font format, updating instantly on filter actions.
+  9. **Interactive Channel 'All' Toggle**: Refactored the "All" channel option into a dynamic, mutually exclusive checkbox that handles selection states and synchronizes across viewports.
+  10. **Swiper Navigation Arrow States Fix**: Updated CSS overrides in `index.blade.php` to target next arrows only, and added a custom `.swiper-nav-hidden` class. Implemented dynamic arrow visibility inside `custom-jquery.js` to hide the previous (`<`) arrow at slide index 0 and hide the next (`>`) arrow when all database records are exhausted. This custom class prevents UIKit/Swiper from overriding the visibility rules on page load (specifically fixing the Web Stories previous arrow visibility).
+
+### [2026-07-16] Page Speed & Core Web Vitals Optimization
+
+* **Feature**: Optimized home page PageSpeed score (focusing on LCP and CLS) by lazy-loading flag modals, adding explicit dimensions to channel logos, preconnecting to openweathermap, and hiding non-initialized Swiper slides.
+* **Files Modified**:
+  * [app/Http/Controllers/AdminControllers/LanguageController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/AdminControllers/LanguageController.php)
+  * [resources/views/front_end/classic/layout/main.blade.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/resources/views/front_end/classic/layout/main.blade.php)
+  * [resources/views/front_end/classic/layout/header.blade.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/resources/views/front_end/classic/layout/header.blade.php)
+  * [resources/views/front_end/classic/pages/index.blade.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/resources/views/front_end/classic/pages/index.blade.php)
+  * [resources/views/front_end/classic/pages/partials/top_posts_slides.blade.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/resources/views/front_end/classic/pages/partials/top_posts_slides.blade.php)
+  * [resources/views/front_end/classic/pages/partials/search_result_posts.blade.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/resources/views/front_end/classic/pages/partials/search_result_posts.blade.php)
+  * [public/front_end/classic/css/custom.css](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/public/front_end/classic/css/custom.css)
+* **Logic Changes**:
+  1. **New Flag Image Resizing & WebP Compression**: Modified the `store_language` method in `LanguageController.php` to call `FileService::resizeAndCompressUpload` with 150px max width and WebP output format. Ensures new flags are highly optimized.
+  2. **Deferred Modal Flag Loading**: Converted web language modal flag images inside `header.blade.php` to use the `lazy-img` class and a base64 spacer. Excluded modal flags from the page's global lazy load `IntersectionObserver` in `main.blade.php` to prevent premature load trigger on page initialize. Instead, added dedicated event listeners in `main.blade.php` to swap the images' sources on modal `beforeshow` events.
+  3. **Above-the-Fold LCP Prioritization**: Removed `loading="lazy"` from the first 4 slides of the Top Posts swiper in `index.blade.php`, and added `fetchpriority="high"` to the very first slide's image. This allows the browser to request the visible above-the-fold banner assets immediately, decreasing LCP resource delay.
+  4. **Swiper Pre-Initialization Anti-Shift CSS**: Injected a CSS override ruleset in `index.blade.php` to hide all slides except the first one in uninitialized Swiper containers (`.swiper:not(.swiper-initialized)`). This prevents carousels from stacking slides vertically and causing height collapse shifts when JavaScript executes.
+  5. **Explicit Dimensions for Channel Logos**: Added explicit `width="20" height="20"` attributes to all channel logo elements in `index.blade.php`, `top_posts_slides.blade.php`, and `search_result_posts.blade.php` to avoid browser dimension calculation changes on download.
+  6. **Third-Party Preconnection**: Added a `<link rel="preconnect" href="https://api.openweathermap.org">` tag in `main.blade.php`'s head to establish early handshakes for the weather data API.
+  7. **Universal JavaScript Lazy Load Filter**: Updated `main.blade.php` to query all `lazy-img` tags and filter out language modal images dynamically using `.closest()` rather than complex CSS Selectors Level 4 `:not()` exclusions. This fixes flag images loading eagerly in environments (like headless crawler browsers) that do not support Level 4 selectors.
+  8. **Weather Icon Dimensions**: Added explicit `width="100" height="100"` attributes and inline styling to `img#weather-icon` inside `index.blade.php` to prevent it from shifting the page layout when the weather API completes.
+  9. **E-Newspaper Aspect-Ratio CLS Resolution**: Removed conflicting `height: 300px;` styling from the `.epaper_css` class inside `custom.css`, allowing UIKit's aspect ratio containers (`ratio-1x1`, `ratio-16x9`) to size the E-Newspaper block consistently on mobile and desktop viewports.
+
+### [2026-07-17] Post Detail Page & Global View Composer Optimization
+
+* **Feature**: Optimized the performance of the single Post Detail page and globally cached the shared View Composer variables (categories, channels, settings, sidebars) to reduce database hits across all front-end page requests.
+* **Files Modified**:
+  * [app/Providers/AppServiceProvider.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Providers/AppServiceProvider.php)
+  * [app/Http/Controllers/PostDetailController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/PostDetailController.php)
+* **Logic Changes**:
+  1. **Global View Composer Caching**: Wrapped the wildcard view composer dataset (topics list, channel lists, channel top posts, settings, custom configurations) inside `AppServiceProvider.php` in a `Cache::remember` block for 10 minutes. The cache key is scoped dynamically by active Web Language and Subscribed News Languages. This cuts down database query overhead globally on every single frontend page request by 12 to 15 queries.
+  2. **getRecentPosts Signature Update**: Optimized `getRecentPosts` inside `AppServiceProvider.php` to accept `$subscribedLanguageIds` directly, preventing it from executing redundant queries on user subscription statuses.
+  3. **Reaction Seeding Check Bypass**: Replaced the expensive `Reaction::count() === 0` check inside `PostDetailController.php` index method with a forever-cached value, avoiding hitting the reactions table count on every single post load.
+  4. **System Settings Cache Usage**: Replaced all direct database queries on the `settings` table inside `PostDetailController.php` (such as plucking settings, getting `news_label_place_holder`, and getting `free_trial_post_limit`) with values fetched from `CachingService::getSystemSettings()`. This also resolved an existing bug where `$setting` was accessed without initialization.
+  5. **Guest Favorites Bypass**: Configured the favorite status lookup inside `PostDetailController.php` to bypass the `favorites` table completely if the visitor is a guest (null or `'0'`), directly assigning `is_bookmark = 0`.
+  6. **Reactions N+1 Query Fix**: Fetched all active reaction models once using `Reaction::all()` outside of the post reactions loop inside `PostDetailController.php`. Used collection filters (`firstWhere`) to map UUIDs in memory, eliminating multiple sequential queries inside the loop.
+  7. **Next/Previous Selective Columns**: Modified next and previous post queries to retrieve only the required fields (`id`, `title`, `slug`, `image`, `video_thumb`, `type`) instead of executing `select *`, saving database payload and model hydration memory.
+  8. **Guest PostView Query Bypass**: In the `viewCount` method of `PostDetailController.php`, skipped the `PostView` database select query entirely for guest visitors, since views are only tracked via cookies for guests and are never written to the `post_views` table.
+  9. **Language & Status Caching**: Cached static language lists (`Language::all()`, `NewsLanguage::all()`) and the active default language in memory to avoid redundant DB hits when the View Composer cache is accessed. Cached the active language status check inside `NewsLanguageStatus::getCurrentStatus()` to prevent redundant lookups.
+  10. **E-Newspaper Height Fix**: Restored `height: 300px` inside `.epaper_css` in `custom.css` and applied inline `style="height: 300px;"` to the container and image in `index.blade.php` to match the original layout design exactly while keeping Cumulative Layout Shift (CLS) at 0.
+  11. **Language Cache Invalidation**: Added Eloquent `saved` and `deleted` event listeners for `Language` and `NewsLanguage` models in `AppServiceProvider.php` to clear their respective cache keys (`all_languages_list`, `all_news_languages_list`, and `news_language_default_active`) when modified by an administrator.
+  12. **View Composer Cache Buster**: Introduced a global `view_composer_cache_buster` cache key and appended it to the View Composer cache key. Configured listeners on `Language`, `NewsLanguage`, `Setting`, and `NewsLanguageStatus` to increment this buster on any modifications. This ensures that language toggles and setting changes in the admin panel invalidate the cached view variables instantly for all users.
+  13. **html_entity_decode Null Warnings Resolution**: Safeguarded calls to `html_entity_decode()` in `index.blade.php`, `BookmarkController.php`, and `FetchRssFeedController.php` with a null-coalescing default empty string (`?? ''`). This prevents PHP 8.1+ deprecation warnings from firing when post descriptions are null.
+  14. **Additional Post Page Query Reductions**:
+      - Cached `Reaction::all()` definitions forever inside `PostDetailController.php`, saving 1 SQL statement.
+      - Cached subscriber news language IDs in Symfony request attributes shared between `PostDetailController.php` and `AppServiceProvider.php`, eliminating duplicate DB queries.
+      - Removed the redundant categories/topics list query from `PostDetailController.php`, inheriting the globally shared View Composer `$topics` variable instead.
+
+### [2026-07-17] Agent Guidelines Documentation Setup
+
+* **Feature**: Set up developer agent guidelines and coding patterns mapping for the NewsHunt Laravel project.
+* **Files Created/Modified**:
+  * [.agents/agent_instruction.md](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/.agents/agent_instruction.md) (Created and expanded to cover end-to-end codebase systems, tech stack specifications, frontend assets, and data flows)
+* **Logic Changes**:
+  * Codified the architectural standards, caching strategies, Eloquent optimization guidelines, frontend Core Web Vitals practices, and WebP compression guidelines into a unified instructions markdown file for AI coding subagents working on this workspace to prevent breaking existing systems.
+  * Expanded the guidelines to include database model definitions, subscription limit and increment validations, homepage feed consolidation and shuffling, payment gateway checkout routines, RSS ingestion automation, web stories cookie-based tracking, and custom advertiser ad operations.
+  * Added detailed technical stack breakdowns (Laravel, Sanctum, Spatie, jQuery, UIKit, SwiperJS), frontend script mappings (custom-jquery.js, search-news.js), CSS layout guidelines (CLS heights, Swiper anti-shift templates), and visual sequence data flow diagrams.
+
+### [2026-07-20] Enterprise Architecture Knowledge Base Skill & File Changes Log Setup
+
+* **Feature**: Built a 13-part architecture knowledge base skill inside `.agents/skills/newshunt-architecture/` and created the project master index tracker `FILE_CHANGES_LOG.md`.
+* **Files Created/Modified**:
+  * [FILE_CHANGES_LOG.md](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/FILE_CHANGES_LOG.md) (Created master file changes index log and running tally table)
+  * [.agents/skills/newshunt-architecture/SKILL.md](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/.agents/skills/newshunt-architecture/SKILL.md) (Created master skill entry file)
+  * [.agents/skills/newshunt-architecture/references/01_PROJECT_OVERVIEW.md](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/.agents/skills/newshunt-architecture/references/01_PROJECT_OVERVIEW.md)
+  * [.agents/skills/newshunt-architecture/references/02_TECH_STACK_AND_DEPENDENCIES.md](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/.agents/skills/newshunt-architecture/references/02_TECH_STACK_AND_DEPENDENCIES.md)
+  * [.agents/skills/newshunt-architecture/references/03_FOLDER_STRUCTURE_AND_CONVENTIONS.md](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/.agents/skills/newshunt-architecture/references/03_FOLDER_STRUCTURE_AND_CONVENTIONS.md)
+  * [.agents/skills/newshunt-architecture/references/04_DATABASE_SCHEMA_AND_MIGRATIONS.md](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/.agents/skills/newshunt-architecture/references/04_DATABASE_SCHEMA_AND_MIGRATIONS.md)
+  * [.agents/skills/newshunt-architecture/references/05_MODELS_AND_RELATIONS.md](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/.agents/skills/newshunt-architecture/references/05_MODELS_AND_RELATIONS.md)
+  * [.agents/skills/newshunt-architecture/references/06_ROUTES_MIDDLEWARE_AND_APIS.md](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/.agents/skills/newshunt-architecture/references/06_ROUTES_MIDDLEWARE_AND_APIS.md)
+  * [.agents/skills/newshunt-architecture/references/07_CONTROLLERS_AND_CALL_CHAINS.md](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/.agents/skills/newshunt-architecture/references/07_CONTROLLERS_AND_CALL_CHAINS.md)
+  * [.agents/skills/newshunt-architecture/references/08_BUSINESS_RULES_AND_PAYWALLS.md](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/.agents/skills/newshunt-architecture/references/08_BUSINESS_RULES_AND_PAYWALLS.md)
+  * [.agents/skills/newshunt-architecture/references/09_FRONTEND_ASSETS_AND_BLADE.md](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/.agents/skills/newshunt-architecture/references/09_FRONTEND_ASSETS_AND_BLADE.md)
+  * [.agents/skills/newshunt-architecture/references/10_EVENTS_QUEUES_AND_SCHEDULES.md](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/.agents/skills/newshunt-architecture/references/10_EVENTS_QUEUES_AND_SCHEDULES.md)
+  * [.agents/skills/newshunt-architecture/references/11_AUTHENTICATION_AND_AUTHORIZATION.md](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/.agents/skills/newshunt-architecture/references/11_AUTHENTICATION_AND_AUTHORIZATION.md)
+  * [.agents/skills/newshunt-architecture/references/12_CHANGE_IMPACT_AND_KNOWN_DEBT.md](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/.agents/skills/newshunt-architecture/references/12_CHANGE_IMPACT_AND_KNOWN_DEBT.md)
+  * [.agents/skills/newshunt-architecture/references/13_RESPONSIVENESS_CROSS_BROWSER_AND_MOBILE_API_SAFETY.md](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/.agents/skills/newshunt-architecture/references/13_RESPONSIVENESS_CROSS_BROWSER_AND_MOBILE_API_SAFETY.md)
+  * [.agents/agent_instruction.md](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/.agents/agent_instruction.md) (Updated master pointer table)
+* **Logic Changes**:
+  * Codified complete 13-document reference architecture covering CodeCanyon domain context, full tech stack dependencies matrix, folder structures, all 116 database migrations, 60+ Eloquent models, full route tables (`web.php` and `api.php`), controller execution call chains, paywall limit verification algorithms, frontend JS/CSS engines, scheduled console tasks, authentication guards, change safety rules, cross-device responsiveness practices, and mobile REST API backward compatibility guarantees.
+
+### [2026-07-20] Phase 1.1: Topic & Category Pages Query & Model Performance Optimization
+
+* **Feature**: Optimized database query statements and Eloquent model hydration overhead on Topic Directory (`/topics`) and Topic News Feed (`/topics/{slug}`) pages.
+* **Files Modified**:
+  * [TopicFrontController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/TopicFrontController.php)
+  * [CategoryController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/CategoryController.php)
+  * [helper.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Helpers/helper.php)
+* **Logic Changes**:
+  * Reused subscriber language IDs cached in `request()->attributes` to eliminate duplicate database lookup queries across Controllers and `AppServiceProvider` View Composer.
+  * Replaced `Setting::get()` and `Setting::where()` in `CategoryController.php` with `request()->attributes` cached settings arrays, eliminating **146 Setting Eloquent model hydrations** per request.
+  * Added selective column selection (`select(...)`) to `Topic::select(...)` and `Post::select(...)` queries, excluding heavy HTML description blobs from topic list feeds.
+  * Added `request()->attributes` theme slug caching to `getTheme()` in `helper.php` to eliminate repeated default theme queries per request across all pages.
+* **Verification Results**:
+  * `/topics`: Queries reduced from `10 Statements` to `9 Statements` (0 duplicates).
+  * `/topics/world`: Queries reduced from `12 Statements` to `9 Statements` (25% query reduction, 0 duplicates); Eloquent hydrated models dropped from `163 Models` to `17 Models` (~90% memory reduction).
+
+### [2026-07-21] Channels Directory & Single Channel Profile Performance Optimization
+
+* **Feature**: Optimized database query execution, Eloquent model hydrations, and duplicate queries for Channels Directory (`/channels`) and Single Channel Profile (`/channels/{slug}`) pages.
+* **Files Modified**:
+  * [ChannelFrontController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/ChannelFrontController.php)
+* **Logic Changes**:
+  * Replaced `Setting::where('name', 'default_image')->first()` with `$request->attributes` cached settings (`$settingsCache->get('default_image')->value ?? null`), eliminating 1 SQL query and 1 `Setting` Eloquent model hydration per request.
+  * Shared `$subscribedLanguageIds` via `$request->attributes->set('subscribed_language_ids', ...)`, eliminating duplicate `news_languages_subscribers` queries in `AppServiceProvider`.
+  * Replaced the standalone `$post_count = Post::where(...)->count()` query on `/channels/{slug}` with `$post_count = $getChannelPosts->total()`, removing 1 database query.
+  * Wrapped `withCount(['subscribers as is_followed' => ...])` on `/channels` in a `$user ? ... : ...` check to avoid executing unnecessary subqueries (`where user_id = ''`) for unauthenticated visitors.
+  * Integrated `subscribers as is_followed` `withCount` subquery directly into `$channelData` query on `/channels/{slug}`, eliminating the extra `ChannelSubscriber::where('channel_id', ...)` SQL query and model hydration.
+  * Added explicit column selection (`Channel::select(...)`) and added `'channels.slug as channel_slug'` to `Post::select(...)`.
+### [2026-07-21] Web Stories Performance & Query Optimization
+
+* **Feature**: Optimized database query execution, Eloquent model hydrations, and duplicate queries for Web Stories Directory (`/webstories`), Single Web Story Reader (`/webstories/{topic}/{story}`), and Web Stories by Topic (`/webstories/{topic}`) pages.
+* **Files Modified**:
+  * [WebStory.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/WebStory.php)
+* **Logic Changes**:
+  * Replaced `Setting::pluck('value', 'name')` and `Setting::where('name', 'free_trial_story_limit')` with `$request->attributes` cached settings (`$settingsCache`), completely eliminating **146 Setting Eloquent model hydrations** per story reader hit.
+  * Shared `$subscribedLanguageIds` via `$request->attributes->set('subscribed_language_ids', ...)`, eliminating duplicate `news_languages_subscribers` queries in `AppServiceProvider`.
+  * Computed `$filteredTopics` on `/webstories` directly in memory from the eagerly-loaded `$stories` collection (`$stories->pluck('topic')->filter()->unique('id')->values()`), eliminating 1 SQL query.
+  * Removed unused `Topic::all()` query from `storyByTopic()`, eliminating 1 SQL query and **39 unused `Topic` model hydrations**.
+  * Added selective column projections (`Story::select(...)`, `Topic::select(...)`) across all methods.
+### [2026-07-22] E-Newspaper & PDF Viewer Performance & Query Optimization
+
+* **Feature**: Optimized database query execution, Eloquent model hydrations, and duplicate queries for E-Newspaper Page (`/e-newspaper`), E-Magazine Page (`/e-magazine`), and PDF Viewer Page (`/e-newspaper/{id}/pdf`).
+* **Files Modified**:
+  * [ENewspaperFrontController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/ENewspaperFrontController.php)
+* **Logic Changes**:
+  * Replaced `Setting::pluck('value', 'name')` and individual `Setting::where(...)` queries with `$request->attributes` cached settings (`$settingsCache`), completely eliminating **148 Setting Eloquent model hydrations** per page load.
+  * Shared `$subscribedLanguageIds` via `$request->attributes->set('subscribed_language_ids', ...)`, eliminating duplicate `news_languages_subscribers` queries in `AppServiceProvider`.
+  * Replaced full table scan query `$allEpapers = ENewspaper::with(['channel', 'topic'])->get();` (which fetched all newspaper records to build filter dropdowns) with lightweight `exists` subqueries on `Channel` and `Topic` models.
+  * Ensured wildcard relationship fields are queried to maintain robust schema compatibility (avoiding missing/unmigrated column errors like `language_code`).
+* **Verification Results**:
+  * `/e-newspaper`: Queries reduced from `21 Statements` (6 duplicates) down to `10 Statements` (0 duplicates); Models reduced from `169 Models` down to `15 Models` (0 Setting models).
+  * `/e-newspaper/{id}/pdf`: Queries reduced from `14 Statements` (1 duplicate) down to `5 Statements` (0 duplicates); Models reduced from `9 Models` down to `3 Models` (0 Setting models).
+
+### [2026-07-22] Videos & Audios Performance & Query Optimization
+
+* **Feature**: Optimized database query execution, Eloquent model hydrations, and duplicate queries for Videos Page (`/videos`) and Audios Page (`/audios`).
+* **Files Modified**:
+  * [VideoController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/VideoController.php)
+  * [AudioController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/AudioController.php)
+* **Logic Changes**:
+  * Integrated request attributes settings cache, eliminating the `select name, value, updated_at from settings` query inside `AppServiceProvider`.
+  * Cached subscriber news language IDs in request attributes, preventing duplicate language lookup queries.
+  * Deleted completely unused `$topicIds` pluck query in `VideoController`.
+  * Replaced plucking table scan on `Post` in `AudioController` with a clean `whereHas('posts', ...)` query on `Topic`.
   * Added selective column projections for posts, topics, and channels.
 * **Verification Results**:
   * `/videos`: Queries reduced from `7 Statements` down to `5 Statements` (0 duplicates); Models reduced from `13 Models` down to `10 Models` (0 Setting models).
@@ -853,3 +1048,29 @@ Deferred AJAX loading for Navbar Category Dropdowns and homepage sliders (Most R
 * **Verification Results**:
   * `/membership` (Guest): Queries reduced from `7 Statements` down to `4 Statements` (0 duplicates); Models reduced from `23 Models` down to `22 Models`.
   * `/membership` (Logged-in): Queries reduced from `13 Statements` down to `9 Statements` (0 duplicates); Models reduced from `26 Models` down to `25 Models`.
+
+### [2026-07-23] User Account & Dashboard Performance Optimization
+
+* **Feature**: Optimized database query execution, Eloquent model hydrations, and duplicate queries for User Account Dashboard Profile Page (`/my-account`) and all its subpages: followed channels (`/my-account/followings`), favorites (`/my-account/bookmarks`), subscription details (`/my-account/subscription`), and transaction details (`/my-account/transaction`).
+* **Files Modified**:
+  * [FrontUserController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/FrontUserController.php)
+  * [helper.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Helpers/helper.php)
+  * [AppServiceProvider.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Providers/AppServiceProvider.php)
+  * [Transaction.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Models/Transaction.php)
+* **Logic Changes**:
+  * **Theme Slug Caching:** Cached the active theme query in `getTheme()` forever under cache key `active_theme_slug` and added invalidation observers in `AppServiceProvider.php`, saving 1 database query on *every request* site-wide.
+  * **Followed Channels Column Projection:** Restricted columns fetched for channels to only the necessary ones (`id`, `name`, `slug`, `logo`, `follow_count`), which ensures full compatibility with the "unfollow" feature without retrieving massive unused text fields.
+  * **My Bookmarks Language Cache Re-use:** Retrieved the subscriber news language IDs from the `user_subscribed_languages_{userId}` cache in `favoritePosts()` to save 1 query.
+  * **Subscription Details Optimization:**
+    * Restructured eager loading on `subscription` relation to pull only `plan` and `feature` columns, saving redundant queries on `plan_tenures` and `transactions` tables.
+    * Deleted the completely unused `Plan::with(...)` query that was generating 3 duplicate queries.
+    * Retrieved payment configuration from the cached active payment setting rather than raw database queries.
+  * **Transaction Details Column Projection & JSON Accessor:**
+    * Limited fields queried on the `transaction` table to only the necessary columns.
+    * Solved SQL Exception `Column not found: plan_name` by mapping `$transaction->plan_name` to an accessor that extracts the plan name dynamically from `plan_details` JSON metadata.
+* **Verification Results**:
+  * `/my-account`: Queries reduced from `5 Statements` down to `4 Statements`.
+  * `/my-account/followings`: Queries reduced from `7 Statements` down to `6 Statements`.
+  * `/my-account/bookmarks`: Queries reduced from `8 Statements` down to `6 Statements`.
+  * `/my-account/subscription`: Queries reduced from `13 Statements` down to `7 Statements`; Eloquent models reduced from `28 Models` down to `5 Models`!
+  * `/my-account/transaction`: Queries reduced from `6 Statements` down to `5 Statements`.

@@ -31,8 +31,10 @@ if (! function_exists('getTheme')) {
             if ($request && $request->attributes->has('cached_theme_slug')) {
                 return $request->attributes->get('cached_theme_slug');
             }
-            $themeData = Theme::select('slug')->where('is_default', '1')->first();
-            $slug = optional($themeData)->slug ?? 'classic';
+            $slug = \Illuminate\Support\Facades\Cache::rememberForever('active_theme_slug', function () {
+                $themeData = Theme::select('slug')->where('is_default', '1')->first();
+                return optional($themeData)->slug ?? 'classic';
+            });
             if ($request) {
                 $request->attributes->set('cached_theme_slug', $slug);
             }

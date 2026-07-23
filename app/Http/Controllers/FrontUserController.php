@@ -44,7 +44,9 @@ class FrontUserController extends Controller
         if (! auth()->check()) {
             return redirect()->route('home');
         }
-        $channelData = auth()->user()->subscriptions()->paginate(8);
+        $channelData = auth()->user()->subscriptions()
+            ->select('channels.id', 'channels.name', 'channels.slug', 'channels.logo', 'channels.follow_count')
+            ->paginate(8);
         $title       = __('frontend-labels.followings.title');
         $theme       = getTheme();
         return view(self::PATH . $theme . '/pages/my-account/following', compact('title', 'channelData', 'theme'));
@@ -60,7 +62,9 @@ class FrontUserController extends Controller
         }
         $userId = auth()->user()->id;
         if ($userId) {
-            $subscribedLanguageIds = NewsLanguageSubscriber::where('user_id', $userId)->pluck('news_language_id');
+            $subscribedLanguageIds = \Illuminate\Support\Facades\Cache::remember("user_subscribed_languages_{$userId}", 3600, function () use ($userId) {
+                return NewsLanguageSubscriber::where('user_id', $userId)->pluck('news_language_id');
+            });
         } else {
             $sessionLanguageId = session('selected_news_language');
             if ($sessionLanguageId) {
@@ -205,9 +209,6 @@ class FrontUserController extends Controller
             return response()->json(['status' => 'success', 'message' => __('frontend-labels.settings.language_updated_success')]);
         }
     }
-    /**
-     * Display subscription details.
-     */
     public function subscriptionDetails()
     {
         if (! auth()->check()) {
@@ -215,19 +216,17 @@ class FrontUserController extends Controller
         }
 
         $user         = Auth::user();
-        $subscription = $user->subscription()->with(['feature', 'plan', 'planTenure', 'transactions'])->first();
+        $subscription = $user->subscription()->with([
+            'feature:id,number_of_articles,number_of_stories,number_of_e_papers_and_magazines',
+            'plan:id,name'
+        ])->first();
 
-        $currency = $paymentSetting->currency ?? '$';
+        $paymentSetting = \Illuminate\Support\Facades\Cache::rememberForever('active_payment_setting', function () {
+            return \App\Models\PaymentSetting::where('status', true)->first();
+        });
+        $currency = $paymentSetting->currency_symbol ?? '$';
 
-        $membership_data = Plan::with(['features_plan', 'planTenures' => function ($query) {
-            $query->orderBy('price', 'asc');
-        }])->get();
-
-        if ($subscription) {
-            $membership_data = $membership_data->filter(function ($plan) use ($subscription) {
-                return $plan->id === $subscription->plan_id; // Filter to only the subscribed plan
-            });
-        }
+        $membership_data = collect();
 
         $title = __('frontend-labels.mysubscription.title');
         $theme = getTheme();
@@ -261,7 +260,8 @@ class FrontUserController extends Controller
         $theme = getTheme();
 
         // Fetch transactions for the logged-in user
-        $transactions = Transaction::where('user_id', $user->id)
+        $transactions = Transaction::select('id', 'plan_details', 'transaction_id', 'amount', 'created_at', 'status', 'user_id')
+            ->where('user_id', $user->id)
             ->latest()
             ->get();
 
