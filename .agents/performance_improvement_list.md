@@ -35,11 +35,11 @@ This document lists all customer-facing web pages and routes in the NewsHunt app
 | **Videos Page** (`/videos`) | `VideoController@allVideos` | **Optimized** | 7 | **5** | 13 | **10** | Removed unused pluck query, removed redundant topic eager-loading, settings & language cache. |
 | **Audios Page** (`/audios`) | `AudioController@allAudios` | **Optimized** | 8 | **7** | 4 | **3** | Replaced pluck table scans with whereHas relationship exists check, settings & language cache. |
 | **Membership Page** (`/membership`) | `MembershipController@index` | **Optimized** | 7/13 | **4/9** | 23/26 | **22/25** | Caching active payment setting, using cached settings for trial status, eager loading subscription. |
-| **User Account Dashboard** (`/my-account`) | `FrontUserController@index` | **Pending** | ~15 | *TBD* | ~15 | *TBD* | *Pending query tuning, subscriber relation eager loading.* |
-| **My Bookmarks** (`/my-account/bookmarks`) | `FrontUserController@favoritePosts` | **Pending** | ~15 | *TBD* | ~15 | *TBD* | *Pending query tuning and setting caching.* |
-| **My Followings** (`/my-account/followings`) | `FrontUserController@followingsChannels` | **Pending** | ~15 | *TBD* | ~15 | *TBD* | *Pending query tuning.* |
-| **My Subscription** (`/my-account/subscription`) | `FrontUserController@subscriptionDetails` | **Pending** | ~15 | *TBD* | ~15 | *TBD* | *Pending query tuning.* |
-| **My Transactions** (`/my-account/transaction`) | `FrontUserController@transactionDetails` | **Pending** | ~15 | *TBD* | ~15 | *TBD* | *Pending query tuning.* |
+| **User Account Dashboard** (`/my-account`) | `FrontUserController@index` | **Optimized** | 5 | **4** | 2 | **2** | Cached active default theme slug forever. |
+| **My Bookmarks** (`/my-account/bookmarks`) | `FrontUserController@favoritePosts` | **Optimized** | 8 | **6** | 3 | **3** | Reused cached user subscribed language IDs and theme slug. |
+| **My Followings** (`/my-account/followings`) | `FrontUserController@followingsChannels` | **Optimized** | 7 | **6** | 4 | **4** | Applied selective column projection on Channel relation. |
+| **My Subscription** (`/my-account/subscription`) | `FrontUserController@subscriptionDetails` | **Optimized** | 13 | **7** | 28 | **5** | Eager-loaded subscription with only needed columns, removed unused Plan::with query. |
+| **My Transactions** (`/my-account/transaction`) | `FrontUserController@transactionDetails` | **Optimized** | 6 | **5** | 3 | **3** | Selective columns, resolved SQL exception via plan_name dynamic JSON accessor. |
 | **Contact Us** (`/contact-us`) | `ContactUsController@index` | **Pending** | ~10 | *TBD* | ~10 | *TBD* | *Pending settings attributes cache integration.* |
 | **About Us** (`/about-us`) | `AboutUsController@index` | **Pending** | ~10 | *TBD* | ~10 | *TBD* | *Pending settings attributes cache integration.* |
 | **Privacy Policies** (`/privacy-policies`) | `FooterController@privacyEndPolicy` | **Pending** | ~10 | *TBD* | ~10 | *TBD* | *Pending settings attributes cache integration.* |
