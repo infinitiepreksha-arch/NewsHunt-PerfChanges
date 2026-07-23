@@ -216,11 +216,17 @@ This document is the master log of all feature updates, performance optimization
   * [app/Http/Controllers/VideoController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/VideoController.php)
   * [app/Http/Controllers/AudioController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/AudioController.php)
 
+### 22. [2026-07-23] Membership Plan Page & View Composer Caching Optimization
+* **Task Description:** Optimized query execution, settings retrieval, and database calls on the Membership Plan Page (`/membership`). Implemented global caching of settings list and user subscribed language IDs in `AppServiceProvider`'s View Composer to prevent N+1 query loops globally on all front-end pages.
+* **Files Changed:**
+  * [app/Http/Controllers/MembershipController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/MembershipController.php)
+  * [app/Providers/AppServiceProvider.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Providers/AppServiceProvider.php)
+
 ---
 
 ## 📌 Master Go-To Index of All Changed Codebase Files
 
-**Total Unique Codebase Files Modified/Created Till Now:** 48 Files
+**Total Unique Codebase Files Modified/Created Till Now:** 49 Files
 
 
 | # | File Path | Primary Task / Feature | Date Modified |
@@ -276,5 +282,4 @@ This document is the master log of all feature updates, performance optimization
 | 42 | [public/front_end/classic/js/custom/custom-jquery.js](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/public/front_end/classic/js/custom/custom-jquery.js) | Slider Paginators & JSON Builders | 2026-07-15 |
 | 43 | [public/front_end/classic/js/custom/search-news.js](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/public/front_end/classic/js/custom/search-news.js) | Search AJAX & pushState Paginator | 2026-07-16 |
 | 44 | [.gitignore](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/.gitignore) | Local IDE Folders & Scratch Script Exclusions | 2026-07-20 |
-
-
+| 45 | [app/Http/Controllers/MembershipController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/MembershipController.php) | Membership Query & Settings Caching | 2026-07-23 |

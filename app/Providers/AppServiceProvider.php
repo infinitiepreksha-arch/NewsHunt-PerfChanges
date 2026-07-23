@@ -70,10 +70,28 @@ class AppServiceProvider extends ServiceProvider
 
         // Auto-bust View Composer cache when setting is changed
         \App\Models\Setting::saved(function () use ($incrementBuster) {
+            \Illuminate\Support\Facades\Cache::forget('view_composer_settings_list');
             $incrementBuster();
         });
         \App\Models\Setting::deleted(function () use ($incrementBuster) {
+            \Illuminate\Support\Facades\Cache::forget('view_composer_settings_list');
             $incrementBuster();
+        });
+
+        // Auto-clear active PaymentSetting cache when modified
+        \App\Models\PaymentSetting::saved(function () {
+            \Illuminate\Support\Facades\Cache::forget('active_payment_setting');
+        });
+        \App\Models\PaymentSetting::deleted(function () {
+            \Illuminate\Support\Facades\Cache::forget('active_payment_setting');
+        });
+
+        // Auto-clear NewsLanguageSubscriber cache when modified
+        \App\Models\NewsLanguageSubscriber::saved(function ($model) {
+            \Illuminate\Support\Facades\Cache::forget("user_subscribed_languages_{$model->user_id}");
+        });
+        \App\Models\NewsLanguageSubscriber::deleted(function ($model) {
+            \Illuminate\Support\Facades\Cache::forget("user_subscribed_languages_{$model->user_id}");
         });
 
         View::composer('*', function ($view) {
@@ -93,7 +111,9 @@ class AppServiceProvider extends ServiceProvider
                 if ($request->attributes->has('settings_cache')) {
                     $allSettings = $request->attributes->get('settings_cache');
                 } else {
-                    $allSettings = \Illuminate\Support\Facades\DB::table('settings')->select('name', 'value', 'updated_at')->get()->keyBy('name');
+                    $allSettings = \Illuminate\Support\Facades\Cache::rememberForever('view_composer_settings_list', function () {
+                        return \Illuminate\Support\Facades\DB::table('settings')->select('name', 'value', 'updated_at')->get()->keyBy('name');
+                    });
                     $request->attributes->set('settings_cache', $allSettings);
                 }
                 $getSetting = function ($name) use ($allSettings) {
@@ -114,7 +134,9 @@ class AppServiceProvider extends ServiceProvider
                     $subscribedLanguageIds = $request->attributes->get('subscribed_language_ids');
                 } else {
                     if ($userId) {
-                        $subscribedLanguageIds = NewsLanguageSubscriber::where('user_id', $userId)->pluck('news_language_id');
+                        $subscribedLanguageIds = \Illuminate\Support\Facades\Cache::remember("user_subscribed_languages_{$userId}", 3600, function () use ($userId) {
+                            return NewsLanguageSubscriber::where('user_id', $userId)->pluck('news_language_id');
+                        });
                         if ($subscribedLanguageIds->isEmpty()) {
                             if ($request->attributes->has('active_language_cache')) {
                                 $defaultLanguage = $request->attributes->get('active_language_cache');

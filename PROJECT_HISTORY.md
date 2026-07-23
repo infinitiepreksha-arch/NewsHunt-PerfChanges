@@ -838,13 +838,18 @@ Deferred AJAX loading for Navbar Category Dropdowns and homepage sliders (Most R
   * `/videos`: Queries reduced from `7 Statements` down to `5 Statements` (0 duplicates); Models reduced from `13 Models` down to `10 Models` (0 Setting models).
   * `/audios`: Queries reduced from `8 Statements` down to `7 Statements` (0 duplicates); Models reduced from `4 Models` down to `3 Models` (0 Setting models).
 
+### [2026-07-23] Membership Plan Page & View Composer Caching Optimization
 
-
-
-
-
-
-
-
-
-
+* **Feature**: Optimized database query execution, Eloquent model hydrations, and duplicate queries for Membership Plan Page (`/membership`), and synchronized global View Composer and settings caching across all front-end pages.
+* **Files Modified**:
+  * [MembershipController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/MembershipController.php)
+  * [AppServiceProvider.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Providers/AppServiceProvider.php)
+* **Logic Changes**:
+  * Cached the active payment setting query (`PaymentSetting::where('status', true)->first()`) using `Cache::rememberForever`, reducing database queries by 1.
+  * Swapped direct database pluck settings query for `free_trial_status` with `CachingService::getSystemSettings('free_trial_status')`.
+  * Eager loaded the `subscription` relationship on the logged-in user in the controller, preventing lazy-loading inside the Blade view.
+  * Cached the settings table query in `AppServiceProvider` View Composer using `Cache::rememberForever('view_composer_settings_list')` and added cache invalidation model observers.
+  * Cached user subscribed news language IDs in `AppServiceProvider` View Composer using `Cache::remember` and added observers on `NewsLanguageSubscriber` to invalidate the cache on preference updates.
+* **Verification Results**:
+  * `/membership` (Guest): Queries reduced from `7 Statements` down to `4 Statements` (0 duplicates); Models reduced from `23 Models` down to `22 Models`.
+  * `/membership` (Logged-in): Queries reduced from `13 Statements` down to `9 Statements` (0 duplicates); Models reduced from `26 Models` down to `25 Models`.

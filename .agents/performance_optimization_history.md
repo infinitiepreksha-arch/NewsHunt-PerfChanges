@@ -1083,3 +1083,70 @@ Even after Phase 1, the post page still executed duplicate subscriber languages 
 ### Impact & Scalability
 * **`/videos`**: Reduced queries from `7 Statements` down to `5 Statements` (0 duplicates); Models reduced from `13 Models` down to `10 Models` (0 Setting models).
 * **`/audios`**: Reduced queries from `8 Statements` down to `7 Statements` (0 duplicates); Models reduced from `4 Models` down to `3 Models` (0 Setting models).
+
+---
+
+## 23. Membership Plan Page & View Composer Caching Optimizations
+
+### Root Cause
+1. On `/membership` page load, the database was queried to retrieve payment settings and plucking standard configurations (like `free_trial_status`), causing redundant disk and CPU cycles.
+2. In the View Composer (`AppServiceProvider.php`), settings and active language subscriptions were retrieved directly from database queries on every page request, completely bypassing View Composer caches and adding 2 persistent duplicate queries per load.
+3. Authenticated user's subscription records were lazy-loaded inside `membership_plan.blade.php`, triggering N+1 query loops.
+
+### The Solution & Rationale
+1. Cached active `PaymentSetting` model forever inside `MembershipController.php`, clearing it dynamically when payment settings are modified or deleted in the admin backend.
+2. Cached View Composer settings table query forever under key `view_composer_settings_list` and user subscribed news language IDs under `user_subscribed_languages_{userId}` for 1 hour.
+3. Preloaded the `subscription` relationship on the logged-in user inside `MembershipController.php` using `$user->load('subscription')` to prevent lazy-loading.
+4. Used `CachingService::getSystemSettings('free_trial_status')` to retrieve free trial configuration from in-memory cache.
+
+### Files Modified
+* [MembershipController.php](file:///c:/Users/user/Downloads/Code - v1.4.9/app/Http/Controllers/MembershipController.php)
+* [AppServiceProvider.php](file:///c:/Users/user/Downloads/Code - v1.4.9/app/Providers/AppServiceProvider.php)
+
+### Code Comparison
+```diff
+--- [ORIGINAL CODE - MembershipController.php]
++++ [OPTIMIZED CODE - MembershipController.php]
+@@ -16,8 +16,10 @@
+-        $paymentSetting = PaymentSetting::where('status', true)->first();
++        $paymentSetting = \Illuminate\Support\Facades\Cache::rememberForever('active_payment_setting', function () {
++            return PaymentSetting::where('status', true)->first();
++        });
+         $currency       = $paymentSetting->currency_symbol ?? '$';
+ 
+-        $membershipSettings = Setting::whereIn('name', [
+-            'free_trial_status',
+-        ])->pluck('value', 'name');
++        $freeTrialStatus = \App\Services\CachingService::getSystemSettings('free_trial_status') ?? '0';
+ 
+         // Redirect if free trial is enabled
+-        if (($membershipSettings['free_trial_status'] ?? 0) == 1) {
++        if ($freeTrialStatus == '1') {
+             return redirect()->route('home');
+         }
+ 
+         $user_data = $user = Auth::user();
++        if ($user) {
++            $user->load('subscription');
++        }
+```
+
+```diff
+--- [ORIGINAL CODE - AppServiceProvider.php]
++++ [OPTIMIZED CODE - AppServiceProvider.php]
+@@ -114,2 +114,4 @@
+-                    $allSettings = \Illuminate\Support\Facades\DB::table('settings')->select('name', 'value', 'updated_at')->get()->keyBy('name');
++                    $allSettings = \Illuminate\Support\Facades\Cache::rememberForever('view_composer_settings_list', function () {
++                        return \Illuminate\Support\Facades\DB::table('settings')->select('name', 'value', 'updated_at')->get()->keyBy('name');
++                    });
+@@ -134,2 +136,4 @@
+-                        $subscribedLanguageIds = NewsLanguageSubscriber::where('user_id', $userId)->pluck('news_language_id');
++                        $subscribedLanguageIds = \Illuminate\Support\Facades\Cache::remember("user_subscribed_languages_{$userId}", 3600, function () use ($userId) {
++                            return NewsLanguageSubscriber::where('user_id', $userId)->pluck('news_language_id');
++                        });
+```
+
+### Impact & Scalability
+* **`/membership` (Guest)**: Reduced queries from `7 Statements` down to `4 Statements` (0 duplicates); Models reduced from `23 Models` down to `22 Models`.
+* **`/membership` (Logged-in)**: Reduced queries from `13 Statements` down to `9 Statements` (0 duplicates); Models reduced from `26 Models` down to `25 Models`.
+* **Global impact**: Setting query and news language subscriber queries inside the View Composer are completely cached, saving 2 queries on every single request across the entire site.

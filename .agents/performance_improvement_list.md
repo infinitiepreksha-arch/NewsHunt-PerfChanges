@@ -34,7 +34,7 @@ This document lists all customer-facing web pages and routes in the NewsHunt app
 | **E-Newspaper/Magazine PDF** (`/e-newspaper/{id}/pdf`) | `ENewspaperFrontController@showPdf` | **Optimized** | 14 | **5** | 9 | **3** | Replaced 2 Setting model hydrations, request cache, relation eager load. |
 | **Videos Page** (`/videos`) | `VideoController@allVideos` | **Optimized** | 7 | **5** | 13 | **10** | Removed unused pluck query, removed redundant topic eager-loading, settings & language cache. |
 | **Audios Page** (`/audios`) | `AudioController@allAudios` | **Optimized** | 8 | **7** | 4 | **3** | Replaced pluck table scans with whereHas relationship exists check, settings & language cache. |
-| **Membership Page** (`/membership`) | `MembershipController@index` | **Pending** | ~10 | *TBD* | ~10 | *TBD* | *Pending settings attributes cache integration for trial status check.* |
+| **Membership Page** (`/membership`) | `MembershipController@index` | **Optimized** | 7/13 | **4/9** | 23/26 | **22/25** | Caching active payment setting, using cached settings for trial status, eager loading subscription. |
 | **User Account Dashboard** (`/my-account`) | `FrontUserController@index` | **Pending** | ~15 | *TBD* | ~15 | *TBD* | *Pending query tuning, subscriber relation eager loading.* |
 | **My Bookmarks** (`/my-account/bookmarks`) | `FrontUserController@favoritePosts` | **Pending** | ~15 | *TBD* | ~15 | *TBD* | *Pending query tuning and setting caching.* |
 | **My Followings** (`/my-account/followings`) | `FrontUserController@followingsChannels` | **Pending** | ~15 | *TBD* | ~15 | *TBD* | *Pending query tuning.* |
