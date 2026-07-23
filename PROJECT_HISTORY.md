@@ -1075,12 +1075,12 @@ Deferred AJAX loading for Navbar Category Dropdowns and homepage sliders (Most R
   * `/my-account/subscription`: Queries reduced from `13 Statements` down to `7 Statements`; Eloquent models reduced from `28 Models` down to `5 Models`!
   * `/my-account/transaction`: Queries reduced from `6 Statements` down to `5 Statements`.
 
-### [2026-07-23] Static & Informational Pages Query Optimization
+#### [2026-07-23] Static & Informational Pages Query Optimization
 
 * **Feature**: Optimized database query execution and Eloquent model hydrations for informational/static pages: Contact Us (`/contact-us`), About Us (`/about-us`), Privacy Policies (`/privacy-policies`), and Terms & Conditions (`/terms-and-condition`).
 * **Files Modified**:
   * [AboutUsController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/AboutUsController.php)
-  * [FooterController.php](file:///c:/Users/user%20/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/FooterController.php)
+  * [FooterController.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/app/Http/Controllers/FooterController.php)
 * **Logic Changes**:
   * Swapped direct database selects for `about_us`, `privacy_policy`, and `terms_conditions` setting rows with local lookups from the forever-cached settings collection (`view_composer_settings_list`).
   * Cloned cached collections/objects to prevent unintended in-memory mutations.
@@ -1089,3 +1089,17 @@ Deferred AJAX loading for Navbar Category Dropdowns and homepage sliders (Most R
   * `/about-us`: Queries reduced from `5 Statements` down to `4 Statements`; setting model hydrations reduced to `0`.
   * `/privacy-policies`: Queries reduced from `5 Statements` down to `4 Statements`; setting model hydrations reduced to `0`.
   * `/terms-and-condition`: Queries reduced from `5 Statements` down to `4 Statements`; setting model hydrations reduced to `0`.
+
+### [2026-07-23] Search Page Clear Button and Pagination Dark Mode Fixes
+
+* **Feature**: Fixed hover state styling on search results filter clear buttons (which became solid purple with invisible text) and pagination page numbers (which were invisible black-on-black in dark mode).
+* **Files Modified**:
+  * [search-result.blade.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/resources/views/front_end/classic/pages/search-result.blade.php)
+  * [search-news.js](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/public/front_end/classic/js/custom/search-news.js)
+  * [custom.css](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/public/front_end/classic/css/custom.css)
+* **Logic Changes**:
+  * Removed conflicting `.text-primary` class from desktop/mobile clear filters buttons to restore white text on hover.
+  * Stripped hardcoded `.text-black` class from the dynamic AJAX pagination template in JavaScript.
+  * Overrode standard `.btn-outline-primary` classes dynamically via CSS custom variables to follow theme colors and support high-contrast white text in dark mode.
+  * Defined robust CSS styling for `.nav-pagination` and `.uc-pagination` links in `custom.css` to render correctly in dark mode (white text) and light mode (dark text) with smooth transitions for hover and active states.
+* **Verification Results**: Verified correct rendering, hover filling behavior, and full visibility on Search, Topics, and Channels pages under both light and dark modes.

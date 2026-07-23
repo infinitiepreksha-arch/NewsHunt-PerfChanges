@@ -100,3 +100,66 @@ function buildPageUrl(p) {
 * **Benefit:** Provides an ultra-responsive, consistent, deep-linkable search & filter experience matching NewsHunt design standards.
 * **Caution:** When adding new filters to the search page, ensure `buildPageUrl(p)` and `triggerAjaxFetch()` collect the new parameters.
 
+---
+
+## 3. Search Page Clear Button and Pagination Dark Mode Fixes
+
+### Feature Need / Requirement
+1. **Clear Button Styling:** The "Clear filters" buttons (both desktop and mobile viewports) became solid purple on hover with dark purple text, making the button label completely unreadable. In dark mode, the button was also difficult to read due to conflicting text classes.
+2. **Responsive Pagination:** The dynamic AJAX-based pagination controls on the search results page rendered page numbers as black text on a black background when dark mode was enabled, rendering them completely invisible to the user.
+
+### Solution & Architecture Rationale
+1. **Clean Class Hierarchy:** Removed the hardcoded `.text-primary` utility class from the Blade templates for mobile and desktop clear buttons. This allowed standard hover styles to fill the background with primary color and transition the text color to white.
+2. **Parent Class Inheritance:** Removed the hardcoded `.text-black` utility class from the AJAX template builder in `search-news.js`.
+3. **Explicit Stylesheet Rules:** Appended custom responsive rules to `custom.css` with `!important` flags to override text and hover colors across all page navigation controls on all pages, ensuring high contrast in both light (dark text) and dark (white text) modes.
+4. **CSS Theme Synchronization:** Updated the `.btn-outline-primary` definition to pull border and hover background colors dynamically from the `--color-primary` CSS variable rather than static hex codes.
+
+### Files Modified
+* [resources/views/front_end/classic/pages/search-result.blade.php](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/resources/views/front_end/classic/pages/search-result.blade.php)
+* [public/front_end/classic/js/custom/search-news.js](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/public/front_end/classic/js/custom/search-news.js)
+* [public/front_end/classic/css/custom.css](file:///c:/Users/user/Downloads/Code%20-%20v1.4.9/public/front_end/classic/css/custom.css)
+
+### Code Comparison
+```html
+<!-- [search-result.blade.php - Desktop Clear Button] -->
+- <button type="button" id="btn-clear-filters-desktop" class="btn btn-outline-primary btn-sm text-primary w-100">
++ <button type="button" id="btn-clear-filters-desktop" class="btn btn-outline-primary btn-sm w-100">
+```
+
+```javascript
+/* [search-news.js - Dynamic Pagination Container] */
+- html += '<ul class="nav-x uc-pagination hstack gap-1 justify-center ft-secondary text-black" data-uc-margin="">';
++ html += '<ul class="nav-x uc-pagination hstack gap-1 justify-center ft-secondary" data-uc-margin="">';
+```
+
+```css
+/* [custom.css - Responsive Outline Primary & Pagination] */
+.btn-outline-primary {
+  --bs-btn-color: var(--color-primary, #e62323);
+  --bs-btn-border-color: var(--color-primary, #e62323);
+}
+
+.uc-dark .btn-outline-primary,
+:where(.uc-dark) .btn-outline-primary {
+  --bs-btn-color: #ffffff;
+  --bs-btn-border-color: var(--color-primary, #e62323);
+  --bs-btn-hover-color: #ffffff;
+}
+
+.nav-pagination a,
+.uc-pagination a {
+  color: var(--bs-body-color, #1f2937) !important;
+}
+
+.uc-dark .nav-pagination a,
+:where(.uc-dark) .nav-pagination a,
+.uc-dark .uc-pagination a,
+:where(.uc-dark) .uc-pagination a {
+  color: #ffffff !important;
+}
+```
+
+### Impact & Future Scalability
+* **Benefit:** Ensures perfect visual contrast and theme-color compliance for search pagination and outline buttons across all light and dark mode viewport configurations.
+* **Caution:** Since the styles are defined globally in `custom.css` targeting `.uc-pagination a` and `.nav-pagination a`, any future custom pagination grids using these class selectors will automatically inherit these correct responsive styles.
+

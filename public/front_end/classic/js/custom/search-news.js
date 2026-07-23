@@ -623,7 +623,7 @@
             }
 
             var html = '<div class="nav-pagination pt-4 xl:pt-6 mt-4 border-top">';
-            html += '<ul class="nav-x uc-pagination hstack gap-1 justify-center ft-secondary text-black" data-uc-margin="">';
+            html += '<ul class="nav-x uc-pagination hstack gap-1 justify-center ft-secondary" data-uc-margin="">';
 
             // Chevron Left (Previous)
             if (prevUrl) {

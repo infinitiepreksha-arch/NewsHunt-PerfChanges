@@ -1074,3 +1074,72 @@ body {
 .search-tab-content::-webkit-scrollbar {
   display: none;
 }
+
+/* Dynamic Theme Color and Dark Mode styling for Outline Primary Button */
+.btn-outline-primary {
+  --bs-btn-color: var(--color-primary, #e62323);
+  --bs-btn-border-color: var(--color-primary, #e62323);
+  --bs-btn-hover-bg: var(--color-primary, #e62323);
+  --bs-btn-hover-border-color: var(--color-primary, #e62323);
+  --bs-btn-active-bg: var(--color-primary, #e62323);
+  --bs-btn-active-border-color: var(--color-primary, #e62323);
+  --bs-btn-disabled-color: var(--color-primary, #e62323);
+  --bs-btn-disabled-border-color: var(--color-primary, #e62323);
+}
+
+.uc-dark .btn-outline-primary,
+:where(.uc-dark) .btn-outline-primary {
+  --bs-btn-color: #ffffff;
+  --bs-btn-border-color: var(--color-primary, #e62323);
+  --bs-btn-hover-bg: var(--color-primary, #e62323);
+  --bs-btn-hover-border-color: var(--color-primary, #e62323);
+  --bs-btn-hover-color: #ffffff;
+  --bs-btn-active-bg: var(--color-primary, #e62323);
+  --bs-btn-active-border-color: var(--color-primary, #e62323);
+  --bs-btn-active-color: #ffffff;
+}
+
+/* Pagination responsiveness and dark mode support */
+.nav-pagination a,
+.uc-pagination a {
+  color: var(--bs-body-color, #1f2937) !important;
+  transition: all 0.2s ease-in-out;
+}
+
+.nav-pagination a:hover,
+.uc-pagination a:hover {
+  background-color: var(--color-primary-10, rgba(230, 35, 35, 0.1)) !important;
+  color: var(--color-primary) !important;
+}
+
+.nav-pagination a.uc-active,
+.uc-pagination .uc-active a,
+.uc-pagination a.uc-active {
+  background-color: var(--color-primary) !important;
+  color: #ffffff !important;
+}
+
+.uc-dark .nav-pagination a,
+:where(.uc-dark) .nav-pagination a,
+.uc-dark .uc-pagination a,
+:where(.uc-dark) .uc-pagination a {
+  color: #ffffff !important;
+}
+
+.uc-dark .nav-pagination a:hover,
+:where(.uc-dark) .nav-pagination a:hover,
+.uc-dark .uc-pagination a:hover,
+:where(.uc-dark) .uc-pagination a:hover {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  color: #ffffff !important;
+}
+
+.uc-dark .nav-pagination a.uc-active,
+:where(.uc-dark) .nav-pagination a.uc-active,
+.uc-dark .uc-pagination .uc-active a,
+:where(.uc-dark) .uc-pagination .uc-active a,
+.uc-dark .uc-pagination a.uc-active,
+:where(.uc-dark) .uc-pagination a.uc-active {
+  background-color: var(--color-primary) !important;
+  color: #ffffff !important;
+}

@@ -134,7 +134,7 @@
                                     </ul>
                                     <div class="d-flex justify-between mt-3">
                                         <button type="button" id="btn-clear-filters-mobile"
-                                            class="btn btn-outline-primary btn-sm text-primary w-100">{{ __('frontend-labels.filters.clear') }}</button>
+                                            class="btn btn-outline-primary btn-sm w-100">{{ __('frontend-labels.filters.clear') }}</button>
                                     </div>
                                 </form>
                             </div>
@@ -241,7 +241,7 @@
                                             </div>
                                             <div class="d-flex justify-between mt-3">
                                                 <button type="button" id="btn-clear-filters-desktop"
-                                                    class="btn btn-outline-primary btn-sm text-primary w-100">{{ __('frontend-labels.filters.clear') }}</button>
+                                                    class="btn btn-outline-primary btn-sm w-100">{{ __('frontend-labels.filters.clear') }}</button>
                                             </div>
                                         </form>
                                     </div>
